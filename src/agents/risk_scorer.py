@@ -65,8 +65,19 @@ Be specific. Reference actual numbers from the data. Do not generalize."""
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
         risk_text = response.content
-        print(f"   Risk assessment complete")
-        return {"risk_assessment": risk_text}
+
+        # Log token usage if available
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            usage = response.usage_metadata
+            # usage_metadata can be a dict or object depending on LangChain version
+            if isinstance(usage, dict):
+                input_tokens  = usage.get('input_tokens') or usage.get('prompt_token_count', 0)
+                output_tokens = usage.get('output_tokens') or usage.get('candidates_token_count', 0)
+            else:
+                input_tokens  = getattr(usage, 'input_tokens', 0)
+                output_tokens = getattr(usage, 'output_tokens', 0)
+            print(f"   Tokens — in: {input_tokens} out: {output_tokens}")
+
     except Exception as e:
         print(f"   ❌ RiskScorer failed: {e}")
         return {

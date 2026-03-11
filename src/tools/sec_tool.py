@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import warnings
 from bs4 import XMLParsedAsHTMLWarning
 from dotenv import load_dotenv
+from src.cache import cache_get, cache_set, cache_key
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 load_dotenv()
@@ -22,7 +23,7 @@ def safe_request(url):
     if response.status_code != 200:
         print(f"Request failed: {response.status_code} for {url}")
         return None
-    time.sleep(0.2)  # respect SEC rate limits
+    time.sleep(0.2)
     return response
 
 
@@ -58,10 +59,6 @@ def get_10k_filings(cik: str, limit: int = 1) -> list:
 
 
 def get_best_htm_doc(cik: str, accession: str) -> str:
-    """
-    Find the largest readable HTM file in the filing.
-    This is more reliable than using primaryDocument which may be XBRL.
-    """
     acc_no_dash = accession.replace("-", "")
     index_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no_dash}/index.json"
     response = safe_request(index_url)
@@ -86,20 +83,17 @@ def get_best_htm_doc(cik: str, accession: str) -> str:
 
 
 def download_filing_html(cik: str, accession: str) -> str:
-    """Download the main 10-K HTML document."""
     acc_no_dash = accession.replace("-", "")
 
-    # Try to get the best HTM document first
     best_doc = get_best_htm_doc(cik, accession)
 
     if best_doc:
         url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no_dash}/{best_doc}"
     else:
-        # Fallback to primary document
-        filing = get_10k_filings(cik, limit=1)
-        if not filing:
+        filings = get_10k_filings(cik, limit=1)
+        if not filings:
             return None
-        primary_doc = filing[0]["primary_doc"]
+        primary_doc = filings[0]["primary_doc"]
         url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no_dash}/{primary_doc}"
 
     response = requests.get(url, headers=HEADERS)
@@ -110,11 +104,6 @@ def download_filing_html(cik: str, accession: str) -> str:
 
 
 def _regex_extract_section(text: str, start_pattern: str, end_pattern: str, min_words: int = 200) -> str:
-    """
-    Extract a section using regex boundaries.
-    Picks the longest match to avoid TOC entries.
-    Directly adapted from your sec_service.py approach.
-    """
     pattern = re.compile(
         rf'{start_pattern}(.*?){end_pattern}',
         re.IGNORECASE | re.DOTALL
@@ -124,7 +113,6 @@ def _regex_extract_section(text: str, start_pattern: str, end_pattern: str, min_
     if not matches:
         return None
 
-    # Pick the longest valid match (TOC entries are short, real sections are long)
     best = max(matches, key=lambda x: len(x.split()))
 
     if len(best.split()) < min_words:
@@ -134,19 +122,13 @@ def _regex_extract_section(text: str, start_pattern: str, end_pattern: str, min_
 
 
 def extract_sections(html_content: str) -> dict:
-    """
-    Extract Business Overview, Risk Factors, and MD&A from 10-K HTML.
-    Uses BeautifulSoup + lxml (your proven approach from sec_service.py).
-    """
     soup = BeautifulSoup(html_content, "lxml")
 
-    # Get clean text preserving line structure — key insight from your code
     text = soup.get_text(separator="\n")
-    text = re.sub(r'\xa0', ' ', text)       # remove non-breaking spaces
-    text = re.sub(r'\n+', '\n', text)        # normalize newlines
-    text = re.sub(r'[ \t]+', ' ', text)      # normalize spaces
+    text = re.sub(r'\xa0', ' ', text)
+    text = re.sub(r'\n+', '\n', text)
+    text = re.sub(r'[ \t]+', ' ', text)
 
-    # --- Risk Factors (Item 1A) — your exact regex, proven to work ---
     risk_factors = _regex_extract_section(
         text,
         start_pattern=r'item\s+1a[\.\-–—:]?\s*risk\s*factors?',
@@ -154,7 +136,6 @@ def extract_sections(html_content: str) -> dict:
         min_words=200
     )
 
-    # --- Business Overview (Item 1) ---
     business = _regex_extract_section(
         text,
         start_pattern=r'item\s+1[\.\-–—:]?\s*business',
@@ -162,7 +143,6 @@ def extract_sections(html_content: str) -> dict:
         min_words=100
     )
 
-    # --- MD&A (Item 7) ---
     mda = _regex_extract_section(
         text,
         start_pattern=r'item\s+7[\.\-–—:]?\s*management',
@@ -170,7 +150,6 @@ def extract_sections(html_content: str) -> dict:
         min_words=200
     )
 
-    # Fallback for MD&A if Item 7A doesn't exist as boundary
     if not mda:
         mda = _regex_extract_section(
             text,
@@ -179,51 +158,55 @@ def extract_sections(html_content: str) -> dict:
             min_words=200
         )
 
-    # Cap each section to avoid token overload
-    def cap(text, max_chars):
-        if text and len(text) > max_chars:
-            return text[:max_chars]
-        return text
+    def cap(t, max_chars):
+        if t and len(t) > max_chars:
+            return t[:max_chars]
+        return t
 
     return {
-        "business_overview": cap(business, 1500) or "Business overview not extracted.",
-        "risk_factors": cap(risk_factors, 2500) or "Risk factors not extracted.",
-        "management_discussion": cap(mda, 2500) or "MD&A not extracted."
+        "business_overview":    cap(business,      1500) or "Business overview not extracted.",
+        "risk_factors":         cap(risk_factors,   2500) or "Risk factors not extracted.",
+        "management_discussion": cap(mda,           2500) or "MD&A not extracted."
     }
 
 
 def get_latest_10k_text(ticker: str) -> dict:
-    """
-    Main function — fetch and extract 3 key sections from latest 10-K.
-    """
+    # Check cache first — avoids re-fetching SEC on repeat runs
+    key = cache_key("sec", ticker)
+    cached = cache_get(key)
+    if cached:
+        print(f"   📦 Using cached SEC data for {ticker}")
+        return cached
+
     cik = get_company_cik(ticker)
 
-    # Get latest 10-K filing metadata
     filings = get_10k_filings(cik, limit=1)
     if not filings:
         raise ValueError(f"No 10-K found for {ticker}")
 
     filing = filings[0]
     company_name = filing["company_name"]
-    filing_date = filing["filing_date"]
-    accession = filing["accession"]
+    filing_date  = filing["filing_date"]
+    accession    = filing["accession"]
 
-    # Download HTML
     html = download_filing_html(cik, accession)
     if not html:
         raise ValueError(f"Could not download 10-K for {ticker}")
 
-    # Extract sections
     sections = extract_sections(html)
 
-    return {
-        "ticker": ticker.upper(),
-        "company_name": company_name,
-        "filing_date": filing_date,
-        "business_overview": sections["business_overview"],
-        "risk_factors": sections["risk_factors"],
+    result = {
+        "ticker":                ticker.upper(),
+        "company_name":          company_name,
+        "filing_date":           filing_date,
+        "business_overview":     sections["business_overview"],
+        "risk_factors":          sections["risk_factors"],
         "management_discussion": sections["management_discussion"],
     }
+
+    # Save to cache for next time
+    cache_set(key, result)
+    return result
 
 
 if __name__ == "__main__":

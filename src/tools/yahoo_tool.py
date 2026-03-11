@@ -1,13 +1,23 @@
 import yfinance as yf
 from dotenv import load_dotenv
 
+from src.cache import cache_get, cache_set, cache_key
+
 load_dotenv()
 
 def get_financial_data(ticker: str) -> dict:
     """
     Fetch key financial metrics for a company using Yahoo Finance.
     Returns revenue, profit margins, P/E ratio, debt, and growth metrics.
+
     """
+    key = cache_key("yahoo", ticker)
+    cached = cache_get(key)
+    if cached:
+        print(f"   📦 Using cached Yahoo data for {ticker}")
+        return cached
+
+
     stock = yf.Ticker(ticker)
     info = stock.info
     
@@ -75,7 +85,10 @@ def get_financial_data(ticker: str) -> dict:
     data["return_on_equity"] = format_percent(data["return_on_equity"])
     data["return_on_assets"] = format_percent(data["return_on_assets"])
     
+
+    cache_set(key, data)
     return data
+    
 
 
 if __name__ == "__main__":
@@ -114,3 +127,4 @@ if __name__ == "__main__":
     print(f"Recommendation:  {result['analyst_recommendation']}")
     print(f"Target Price:    {result['target_price']}")
     print(f"# of Analysts:   {result['number_of_analysts']}")
+

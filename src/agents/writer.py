@@ -81,8 +81,20 @@ Tone: precise, institutional, zero fluff. Every claim must have a number."""
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
         memo = response.content
+
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            usage = response.usage_metadata
+            if isinstance(usage, dict):
+                input_tokens  = usage.get('input_tokens') or usage.get('prompt_token_count', 0)
+                output_tokens = usage.get('output_tokens') or usage.get('candidates_token_count', 0)
+            else:
+                input_tokens  = getattr(usage, 'input_tokens', 0)
+                output_tokens = getattr(usage, 'output_tokens', 0)
+            print(f"   Tokens — in: {input_tokens} out: {output_tokens}")
+
         print(f"   Memo written ({len(memo)} chars)")
         return {"investment_memo": memo}
+
     except Exception as e:
         print(f"   ❌ Writer failed: {e}")
         return {

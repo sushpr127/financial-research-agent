@@ -8,3 +8,6 @@ outputs/
 *.pdf
 node_modules/
 .next/
+
+
+echo ".cache/" >> .gitignore
