@@ -7,6 +7,7 @@ from src.config import LLM_PRO
 
 load_dotenv()
 
+
 def writer_agent(state: ResearchState) -> dict:
     """
     Synthesizes all research into a structured investment memo.
@@ -21,9 +22,20 @@ def writer_agent(state: ResearchState) -> dict:
         temperature=0.3
     ).with_config({"run_name": "Writer_LLM"})
 
-    fin = state.get("financial_data") or {}
+    fin  = state.get("financial_data") or {}
     news = state.get("news_results") or []
     news_titles = "\n".join([f"- {n['title']}" for n in news[:5]])
+
+    # ── Round raw floats BEFORE feeding into prompt ───────────────────────────
+    # Prevents Gemini writing "78.759" or "25.246405" in memo prose.
+    def fmt(key, decimals=2):
+        v = fin.get(key, "N/A")
+        if v is None or v == "N/A" or v == "":
+            return "N/A"
+        try:
+            return f"{float(str(v).replace(',', '')):.{decimals}f}"
+        except Exception:
+            return str(v)
 
     prompt = f"""You are a senior equity research analyst at Goldman Sachs.
 Write a professional, data-driven investment memo for {state['company_name']} ({state['ticker']}).
@@ -31,23 +43,27 @@ Write a professional, data-driven investment memo for {state['company_name']} ({
 ALL DATA FOR THIS MEMO:
 
 FINANCIALS (from Yahoo Finance):
-- Revenue (TTM): {fin.get('revenue_ttm', 'N/A')}
-- Gross Margin: {fin.get('gross_margin', 'N/A')}
-- Operating Margin: {fin.get('operating_margin', 'N/A')}
-- Net Margin: {fin.get('profit_margin', 'N/A')}
-- P/E Ratio: {fin.get('pe_ratio', 'N/A')}
-- Forward P/E: {fin.get('forward_pe', 'N/A')}
-- Revenue Growth YoY: {fin.get('revenue_growth', 'N/A')}
-- Earnings Growth YoY: {fin.get('earnings_growth', 'N/A')}
-- Total Debt: {fin.get('total_debt', 'N/A')}
-- Total Cash: {fin.get('total_cash', 'N/A')}
-- Debt/Equity: {fin.get('debt_to_equity', 'N/A')}
-- Return on Equity: {fin.get('return_on_equity', 'N/A')}
-- Current Ratio: {fin.get('current_ratio', 'N/A')}
-- Analyst Consensus: {str(fin.get('analyst_recommendation', 'N/A')).upper()}
-- Analyst Price Target: ${fin.get('target_price', 'N/A')}
-- Number of Analysts: {fin.get('number_of_analysts', 'N/A')}
-- Analyst Flags: {', '.join(fin.get('analyst_flags', [])) or 'None'}
+- Revenue (TTM):        {fin.get('revenue_ttm',       'N/A')}
+- Gross Profit:         {fin.get('gross_profit',       'N/A')}
+- Net Income:           {fin.get('net_income',         'N/A')}
+- EBITDA:               {fin.get('ebitda',             'N/A')}
+- Gross Margin:         {fin.get('gross_margin',       'N/A')}
+- Operating Margin:     {fin.get('operating_margin',   'N/A')}
+- Net Margin:           {fin.get('net_margin',         'N/A')}
+- P/E Ratio:            {fmt('pe_ratio')}
+- Forward P/E:          {fmt('forward_pe')}
+- EV/EBITDA:            {fin.get('ev_ebitda',          'N/A')}
+- Revenue Growth YoY:   {fin.get('revenue_growth',     'N/A')}
+- Earnings Growth YoY:  {fin.get('earnings_growth',    'N/A')}
+- Total Debt:           {fin.get('total_debt',         'N/A')}
+- Cash:                 {fin.get('cash',               'N/A')}
+- Debt/Equity:          {fmt('debt_to_equity')}
+- Return on Equity:     {fin.get('roe',                'N/A')}
+- Current Ratio:        {fmt('current_ratio')}
+- Analyst Consensus:    {str(fin.get('analyst_recommendation', 'N/A')).upper()}
+- Analyst Price Target: ${fin.get('target_price',      'N/A')}
+- Number of Analysts:   {fin.get('number_of_analysts', 'N/A')}
+- Analyst Flags:        {', '.join(fin.get('analyst_flags', [])) or 'None'}
 
 RECENT NEWS:
 {news_titles}
@@ -61,6 +77,7 @@ RISK ASSESSMENT:
 
 Write the memo with EXACTLY these sections. Be specific — cite actual numbers.
 Never write vague sentences like "strong performance" without a number behind it.
+When citing numbers, use the EXACT rounded values provided above — do not add extra decimal places.
 
 ## Executive Summary
 [3-4 sentences: what the company does, headline financial performance, overall stance]
@@ -75,7 +92,7 @@ Never write vague sentences like "strong performance" without a number behind it
 [3 numbered risks, each with the specific data point that flags it]
 
 ## Valuation & Recommendation
-[Price target justification, upside/downside from current price of {fin.get('current_price', 'N/A')}, final recommendation]
+[Price target justification, upside/downside from current price of {fmt('current_price')}, final recommendation]
 
 Tone: precise, institutional, zero fluff. Every claim must have a number."""
 

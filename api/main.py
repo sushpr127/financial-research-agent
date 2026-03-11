@@ -44,21 +44,21 @@ class ResearchResponse(BaseModel):
     investment_memo: str
     risk_assessment: str
     filing_date: str
+    financial_data: dict | None
     pdf_path: str | None
     errors: list[str]
     status: str
+    recommendation: str
 
 
 def _run_pipeline(ticker: str) -> dict:
     """Run the full research pipeline synchronously."""
-    # Validate ticker
     is_valid, result = validate_ticker(ticker)
     if not is_valid:
         raise ValueError(f"Invalid ticker: {result}")
 
     company_name = result
 
-    # Build and run graph
     graph = build_research_graph()
     initial_state = {
         "ticker": ticker.upper(),
@@ -115,7 +115,6 @@ async def research(request: ResearchRequest):
     print(f"\n🚀 API: Starting research for {ticker}")
 
     try:
-        # Run blocking pipeline in thread pool so FastAPI stays responsive
         loop = asyncio.get_event_loop()
         output = await loop.run_in_executor(executor, _run_pipeline, ticker)
 
@@ -130,6 +129,11 @@ async def research(request: ResearchRequest):
     financial    = output.get("financial_data") or {}
     company_name = output.get("company_name", ticker)
     errors       = output.get("errors") or []
+
+    # ── Extract recommendation from financial_data ────────────────────────────
+    recommendation = str(
+        financial.get("analyst_recommendation", "N/A")
+    ).upper()
 
     # Generate PDF
     pdf_path = None
@@ -160,9 +164,11 @@ async def research(request: ResearchRequest):
         investment_memo=memo,
         risk_assessment=risk,
         filing_date=filing_date,
+        financial_data=financial,
         pdf_path=pdf_path,
         errors=errors,
-        status=status
+        status=status,
+        recommendation=recommendation,
     )
 
 
@@ -174,8 +180,10 @@ def download_pdf(ticker: str):
     filepath = f"outputs/{ticker.upper()}_memo_{today}.pdf"
 
     if not os.path.exists(filepath):
-        raise HTTPException(status_code=404,
-            detail=f"No PDF found for {ticker} today. Run /research first.")
+        raise HTTPException(
+            status_code=404,
+            detail=f"No PDF found for {ticker} today. Run /research first."
+        )
 
     return FileResponse(
         filepath,

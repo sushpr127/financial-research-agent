@@ -1,4 +1,3 @@
-
 import os
 import re
 import io
@@ -35,6 +34,22 @@ RED_BG  = colors.HexColor("#FEE2E2")
 DIVIDER = colors.HexColor("#E5E7EB")
 
 
+def _fmt_number(val):
+    """
+    FIX 1: Round bare floats (P/E ratios, multiples) to 2 dp.
+    Leave values that already carry units (%, $, B, T, M, x) untouched.
+    """
+    if val is None or val == "" or val == 0:
+        return "N/A"
+    sv = str(val)
+    if any(c in sv for c in ('%', '$', 'B', 'T', 'M', 'x')):
+        return sv
+    try:
+        return f"{float(sv.replace(',', '')):.2f}"
+    except Exception:
+        return sv
+
+
 class CoverPage(Flowable):
     def __init__(self, ticker, company_name, report_date,
                  recommendation, current_price, target_price, num_analysts="—"):
@@ -54,10 +69,8 @@ class CoverPage(Flowable):
 
         c.setFillColor(colors.white)
         c.rect(0, 0, W, H, fill=1, stroke=0)
-
         c.setFillColor(colors.HexColor("#F0F4F8"))
         c.rect(0, 0, W, H * 0.45, fill=1, stroke=0)
-
         c.setFillColor(COBALT)
         c.rect(0, H - 7, W, 7, fill=1, stroke=0)
 
@@ -115,7 +128,6 @@ class CoverPage(Flowable):
         c.roundRect(PNL_X + 3, PNL_Y - 3, PNL_W, PNL_H, 10, fill=1, stroke=0)
         c.setFillColor(colors.white)
         c.roundRect(PNL_X, PNL_Y, PNL_W, PNL_H, 10, fill=1, stroke=0)
-
         c.setStrokeColor(COBALT)
         c.setLineWidth(2.5)
         c.line(PNL_X + 10, PNL_Y + PNL_H, PNL_X + PNL_W - 10, PNL_Y + PNL_H)
@@ -134,15 +146,17 @@ class CoverPage(Flowable):
             c.line(div_x, PNL_Y + 0.15 * inch, div_x, PNL_Y + PNL_H - 0.1 * inch)
 
         rec = str(self.recommendation).upper()
-        rec_val_color = (colors.HexColor("#16A34A") if "BUY" in rec else
+        rec_val_color = (colors.HexColor("#16A34A") if "BUY"  in rec else
                          colors.HexColor("#DC2626") if "SELL" in rec else
                          colors.HexColor("#D97706"))
 
+        # FIX 2: Dynamic font size so STRONG_BUY never gets clipped
         c.setFillColor(SLATE)
         c.setFont("Helvetica", 7.5)
         c.drawCentredString(col_xs[0], label_y, "RECOMMENDATION")
         c.setFillColor(rec_val_color)
-        c.setFont("Helvetica-Bold", 24)
+        rec_font = 14 if len(rec) > 8 else (18 if len(rec) > 6 else 24)
+        c.setFont("Helvetica-Bold", rec_font)
         c.drawCentredString(col_xs[0], value_y, rec)
 
         c.setFillColor(SLATE)
@@ -152,9 +166,9 @@ class CoverPage(Flowable):
         c.setFont("Helvetica-Bold", 22)
         c.drawCentredString(col_xs[1], value_y, f"${self.current_price}")
 
-        try:
-            cp_f = float(str(self.current_price).replace(',', ''))
-            tp_f = float(str(self.target_price).replace(',', ''))
+        try: 
+            cp_f   = float(str(self.current_price).replace(',', ''))
+            tp_f   = float(str(self.target_price).replace(',', ''))
             upside = ((tp_f - cp_f) / cp_f) * 100
             upside_str   = f"+{upside:.1f}%" if upside >= 0 else f"{upside:.1f}%"
             upside_color = (colors.HexColor("#16A34A") if upside >= 0
@@ -163,12 +177,18 @@ class CoverPage(Flowable):
             upside_str   = "N/A"
             upside_color = NAVY
 
+        # FIX 3: Price target always 2 decimal places
+        try:
+            tp_disp = f"${float(str(self.target_price).replace(',', '')):.2f}"
+        except Exception:
+            tp_disp = f"${self.target_price}"
+
         c.setFillColor(SLATE)
         c.setFont("Helvetica", 7.5)
         c.drawCentredString(col_xs[2], label_y, "PRICE TARGET")
         c.setFillColor(NAVY)
         c.setFont("Helvetica-Bold", 22)
-        c.drawCentredString(col_xs[2], value_y, f"${self.target_price}")
+        c.drawCentredString(col_xs[2], value_y, tp_disp)
         c.setFillColor(upside_color)
         c.setFont("Helvetica-Bold", 10)
         c.drawCentredString(col_xs[2], sub_y, upside_str + " upside")
@@ -212,7 +232,6 @@ class SectionLabel(Flowable):
 
 
 def _metric_card(label, value, sub=None, highlight=False):
-    bg = SKY if highlight else LIGHT
     items = [
         Paragraph(f'<font size="8" color="#6B7280">{label}</font>',
             ParagraphStyle("ml", fontName="Helvetica", fontSize=8,
@@ -232,8 +251,8 @@ def _make_gauge_chart(score):
     fig, ax = plt.subplots(figsize=(3.2, 1.8), subplot_kw=dict(aspect="equal"))
     fig.patch.set_facecolor('#F9FAFB')
     ax.set_facecolor('#F9FAFB')
-    score = max(0, min(10, score))
-    theta = np.linspace(np.pi, 0, 100)
+    score  = max(0, min(10, score))
+    theta  = np.linspace(np.pi, 0, 100)
     ax.plot(np.cos(theta), np.sin(theta), linewidth=14,
             color='#E5E7EB', solid_capstyle='round')
     if score > 0:
@@ -257,25 +276,30 @@ def _make_gauge_chart(score):
 
 def _make_metrics_bar_chart(fin):
     metrics = {}
-    for k, lbl in [("gross_margin","Gross Margin"),
-                   ("operating_margin","Operating Margin"),
-                   ("net_margin","Net Margin")]:
+    for k, lbl in [("gross_margin", "Gross Margin"),
+                   ("operating_margin", "Operating Margin"),
+                   ("net_margin", "Net Margin")]:
         v = fin.get(k)
         if v and v != "N/A":
-            try: metrics[lbl] = float(str(v).replace('%','').replace(',',''))
-            except: pass
-    if not metrics: return None
+            try:
+                metrics[lbl] = float(str(v).replace('%', '').replace(',', ''))
+            except Exception:
+                pass
+    if not metrics:
+        return None
     fig, ax = plt.subplots(figsize=(4.5, 1.8))
     fig.patch.set_facecolor('#F9FAFB'); ax.set_facecolor('#F9FAFB')
     labels, values = list(metrics.keys()), list(metrics.values())
-    bars = ax.barh(labels, values, color=['#2563EB','#1B4F8A','#0D1B2A'][:len(labels)],
+    bars = ax.barh(labels, values,
+                   color=['#2563EB', '#1B4F8A', '#0D1B2A'][:len(labels)],
                    height=0.5, edgecolor='none')
     for bar, val in zip(bars, values):
-        ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height()/2,
+        ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
                 f'{val:.1f}%', va='center', ha='left', fontsize=8.5,
                 fontweight='bold', color='#1F2937')
     ax.set_xlim(0, max(values) * 1.25)
-    for sp in ['top','right','left']: ax.spines[sp].set_visible(False)
+    for sp in ['top', 'right', 'left']:
+        ax.spines[sp].set_visible(False)
     ax.tick_params(left=False, bottom=False, labelbottom=False)
     ax.tick_params(axis='y', labelsize=8, labelcolor='#6B7280')
     plt.tight_layout(pad=0.3)
@@ -287,13 +311,16 @@ def _make_metrics_bar_chart(fin):
 
 def _make_growth_chart(fin):
     vals = {}
-    for lbl, k in [("Revenue Growth","revenue_growth"),
-                   ("Earnings Growth","earnings_growth")]:
+    for lbl, k in [("Revenue Growth", "revenue_growth"),
+                   ("Earnings Growth", "earnings_growth")]:
         v = fin.get(k)
         if v and v != "N/A":
-            try: vals[lbl] = float(str(v).replace('%','').replace(',',''))
-            except: pass
-    if not vals: return None
+            try:
+                vals[lbl] = float(str(v).replace('%', '').replace(',', ''))
+            except Exception:
+                pass
+    if not vals:
+        return None
     fig, ax = plt.subplots(figsize=(3.0, 1.8))
     fig.patch.set_facecolor('#F9FAFB'); ax.set_facecolor('#F9FAFB')
     labels, values = list(vals.keys()), list(vals.values())
@@ -302,12 +329,13 @@ def _make_growth_chart(fin):
                   width=0.45, edgecolor='none')
     for bar, val in zip(bars, values):
         ypos = val + 0.3 if val >= 0 else val - 1.5
-        ax.text(bar.get_x() + bar.get_width()/2, ypos,
+        ax.text(bar.get_x() + bar.get_width() / 2, ypos,
                 f'{val:+.1f}%', ha='center',
                 va='bottom' if val >= 0 else 'top',
                 fontsize=8.5, fontweight='bold', color='#1F2937')
     ax.axhline(0, color='#D1D5DB', linewidth=0.8)
-    for sp in ['top','right','left']: ax.spines[sp].set_visible(False)
+    for sp in ['top', 'right', 'left']:
+        ax.spines[sp].set_visible(False)
     ax.tick_params(left=False, bottom=False, labelbottom=True)
     ax.tick_params(axis='x', labelsize=7.5, labelcolor='#6B7280')
     ax.tick_params(axis='y', labelleft=False)
@@ -361,22 +389,38 @@ def _parse_memo(memo_text):
 
 
 def _flowables(text, S):
+    """
+    Convert section text to ReportLab flowables.
+    FIX 4: Strips leading stray asterisk Gemini artifact (* **Bold:** text)
+    FIX 5: Removes double numbering (1. 1. Text → 1. Text)
+    """
     out = []
     for line in text.split("\n"):
         s = line.strip()
-        if not s: out.append(Spacer(1, 3)); continue
+        if not s:
+            out.append(Spacer(1, 3))
+            continue
+
+        # Convert **bold** to ReportLab tags
         s = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', s)
+
+        # Strip leading stray asterisk: "* <b>Revenue:</b> ..." → "<b>Revenue:</b> ..."
+        s = re.sub(r'^\*\s+', '', s)
+
         if re.match(r'^[\*\-]\s+', s):
-            out.append(Paragraph(
-                f"<bullet>&bull;</bullet> {re.sub(r'^[*-]\\s+','',s)}",
-                S["bullet"]))
+            text_content = re.sub(r'^[\*\-]\s+', '', s)
+            out.append(Paragraph(f"<bullet>&bull;</bullet> {text_content}", S["bullet"]))
+
         elif re.match(r'^\d+\.\s+', s):
-            num = re.match(r'^(\d+)\.', s).group(1)
-            out.append(Paragraph(
-                f"<bullet>{num}.</bullet> {re.sub(r'^\\d+\\.\\s+','',s)}",
-                S["bullet"]))
+            # Fix double numbering: "1. 1. Text" or "1. 2. Text" → "1. Text"
+            s = re.sub(r'^(\d+)\.\s+\d+\.\s+', r'\1. ', s)
+            num          = re.match(r'^(\d+)\.', s).group(1)
+            text_content = re.sub(r'^\d+\.\s+', '', s)
+            out.append(Paragraph(f"<bullet>{num}.</bullet> {text_content}", S["bullet"]))
+
         else:
             out.append(Paragraph(s, S["body"]))
+
     return out
 
 
@@ -384,17 +428,17 @@ def _header_footer(canvas, doc):
     canvas.saveState()
     W, H = letter
     canvas.setStrokeColor(COBALT); canvas.setLineWidth(1.5)
-    canvas.line(0.6*inch, H-0.45*inch, W-0.6*inch, H-0.45*inch)
+    canvas.line(0.6 * inch, H - 0.45 * inch, W - 0.6 * inch, H - 0.45 * inch)
     canvas.setFont("Helvetica", 7.5); canvas.setFillColor(SLATE)
-    canvas.drawString(0.6*inch, H-0.38*inch,
+    canvas.drawString(0.6 * inch, H - 0.38 * inch,
                       "EQUITY RESEARCH  ·  INVESTMENT MEMORANDUM")
-    canvas.drawRightString(W-0.6*inch, H-0.38*inch, doc.ticker_label)
+    canvas.drawRightString(W - 0.6 * inch, H - 0.38 * inch, doc.ticker_label)
     canvas.setStrokeColor(DIVIDER); canvas.setLineWidth(0.5)
-    canvas.line(0.6*inch, 0.5*inch, W-0.6*inch, 0.5*inch)
+    canvas.line(0.6 * inch, 0.5 * inch, W - 0.6 * inch, 0.5 * inch)
     canvas.setFont("Helvetica", 7.5); canvas.setFillColor(SLATE)
-    canvas.drawCentredString(W/2, 0.34*inch, f"Page {doc.page}")
-    canvas.drawString(0.6*inch, 0.34*inch, doc.report_date_label)
-    canvas.drawRightString(W-0.6*inch, 0.34*inch, "CONFIDENTIAL")
+    canvas.drawCentredString(W / 2, 0.34 * inch, f"Page {doc.page}")
+    canvas.drawString(0.6 * inch, 0.34 * inch, doc.report_date_label)
+    canvas.drawRightString(W - 0.6 * inch, 0.34 * inch, "CONFIDENTIAL")
     canvas.restoreState()
 
 
@@ -407,8 +451,8 @@ def generate_pdf(memo_text, ticker, company_name,
     filepath = os.path.join(output_dir, f"{ticker.upper()}_memo_{today}.pdf")
 
     doc = SimpleDocTemplate(filepath, pagesize=letter,
-        leftMargin=0.65*inch, rightMargin=0.65*inch,
-        topMargin=0.75*inch,  bottomMargin=0.75*inch)
+        leftMargin=0.65 * inch, rightMargin=0.65 * inch,
+        topMargin=0.75 * inch,  bottomMargin=0.75 * inch)
     doc.ticker_label      = f"{company_name}  ({ticker.upper()})"
     doc.report_date_label = f"Report Date: {today}"
 
@@ -418,24 +462,37 @@ def generate_pdf(memo_text, ticker, company_name,
     story    = []
 
     rec = str(fin.get("analyst_recommendation", "N/A"))
-    cp  = str(fin.get("current_price",          "N/A"))
+    cp = f"{float(fin.get('current_price', 0)):.2f}" if fin.get('current_price') != 'N/A' else 'N/A'
     tp  = str(fin.get("target_price",           "N/A"))
 
-    # PAGE 1 — COVER
-    cover = CoverPage(ticker=ticker.upper(), company_name=company_name,
-        report_date=today, recommendation=rec, current_price=cp,
-        target_price=tp,
+    # ── PAGE 1 — COVER ────────────────────────────────────────────────────────
+    cover = CoverPage(
+        ticker=ticker.upper(), company_name=company_name,
+        report_date=today, recommendation=rec,
+        current_price=cp, target_price=tp,
         num_analysts=str(fin.get("number_of_analysts", "—")))
     cover.width, cover.height = letter
     story.append(cover)
     story.append(PageBreak())
 
-    # PAGE 2 — OVERVIEW + METRICS
+    # ── PAGE 2 — OVERVIEW + METRICS ───────────────────────────────────────────
     def safe(key):
         v = fin.get(key, "N/A")
-        return "N/A" if (v is None or v == "" or v == 0) else str(v)
+        if v is None or v == "" or v == 0:
+            return "N/A"
+        # Hide negative EV/EBITDA — occurs when cash > debt (e.g. Berkshire)
+        # Mathematically valid but confusing in a report
+        if key == "ev_ebitda":
+            sv = str(v)
+            if sv.startswith("-"):
+                return "N/A"
+        formatted = _fmt_number(v)
+        # Hide Price/Book that rounds to 0.00 — bad Yahoo Finance data
+        if key == "price_to_book" and formatted == "0.00":
+            return "N/A"
+        return formatted
 
-    story.append(Spacer(1, 0.1*inch))
+    story.append(Spacer(1, 0.1 * inch))
     story.append(Paragraph("INVESTMENT OVERVIEW", S["kicker"]))
     story.append(Paragraph(f"{company_name} ({ticker.upper()})", S["h1"]))
     story.append(HRFlowable(width="100%", thickness=1.5, color=COBALT, spaceAfter=10))
@@ -443,34 +500,34 @@ def generate_pdf(memo_text, ticker, company_name,
     def card_row(cards):
         cols = []
         for card in cards:
-            cell = Table([[p] for p in card], colWidths=[2.0*inch])
+            cell = Table([[p] for p in card], colWidths=[2.0 * inch])
             cell.setStyle(TableStyle([
-                ("BACKGROUND", (0,0),(-1,-1), LIGHT),
-                ("PADDING",    (0,0),(-1,-1), 7),
-                ("LINEABOVE",  (0,0),(-1,0),  2, COBALT),
+                ("BACKGROUND", (0, 0), (-1, -1), LIGHT),
+                ("PADDING",    (0, 0), (-1, -1), 7),
+                ("LINEABOVE",  (0, 0), (-1, 0),  2, COBALT),
             ]))
             cols.append(cell)
-        tbl = Table([cols], colWidths=[2.15*inch]*3)
+        tbl = Table([cols], colWidths=[2.15 * inch] * 3)
         tbl.setStyle(TableStyle([
-            ("VALIGN",        (0,0),(-1,-1), "TOP"),
-            ("LEFTPADDING",   (0,0),(-1,-1), 4),
-            ("RIGHTPADDING",  (0,0),(-1,-1), 4),
-            ("BOTTOMPADDING", (0,0),(-1,-1), 6),
+            ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ]))
         return tbl
 
     story.append(card_row([
         _metric_card("Market Cap",    safe("market_cap"),  "Total capitalisation", True),
         _metric_card("Revenue (TTM)", safe("revenue_ttm"), "Trailing 12 months"),
-        _metric_card("Net Income",    safe("net_income"),  "Trailing 12 months",  True),
+        _metric_card("Net Income",    safe("net_income"),  "Trailing 12 months",   True),
     ]))
-    story.append(Spacer(1,4))
+    story.append(Spacer(1, 4))
     story.append(card_row([
         _metric_card("P/E Ratio",   safe("pe_ratio"),   "Price / Earnings"),
         _metric_card("Forward P/E", safe("forward_pe"), "Next 12 months", True),
         _metric_card("EV/EBITDA",   safe("ev_ebitda"),  "Enterprise value multiple"),
     ]))
-    story.append(Spacer(1,4))
+    story.append(Spacer(1, 4))
     story.append(card_row([
         _metric_card("Gross Margin",     safe("gross_margin"), "% of revenue", True),
         _metric_card("Net Margin",       safe("net_margin"),   "% of revenue"),
@@ -484,35 +541,43 @@ def generate_pdf(memo_text, ticker, company_name,
         story.extend(_flowables(sections["exec"], S))
 
     story.append(Spacer(1, 8))
+
     rec_color_hex = ("#065F46" if "buy"  in rec.lower() else
                      "#991B1B" if "sell" in rec.lower() else "#92400E")
     rec_bg_hex    = ("#D1FAE5" if "buy"  in rec.lower() else
                      "#FEE2E2" if "sell" in rec.lower() else "#FEF3C7")
+
+    # FIX 3 applied to consensus table price target
+    try:
+        tp_fmt = f"${float(str(tp).replace(',', '')):.2f}"
+    except Exception:
+        tp_fmt = f"${tp}"
+
     consensus = [
         [Paragraph('<font color="#6B7280" size="8">ANALYST CONSENSUS</font>', S["caption"]),
          Paragraph('<font color="#6B7280" size="8">NO. OF ANALYSTS</font>',   S["caption"]),
          Paragraph('<font color="#6B7280" size="8">PRICE TARGET</font>',      S["caption"]),
          Paragraph('<font color="#6B7280" size="8">CURRENT PRICE</font>',     S["caption"])],
         [Paragraph(f'<b><font color="{rec_color_hex}" size="14">{rec.upper()}</font></b>', S["body"]),
-         Paragraph(f'<b><font size="14">{fin.get("number_of_analysts","N/A")}</font></b>', S["body"]),
-         Paragraph(f'<b><font size="14">${tp}</font></b>', S["body"]),
-         Paragraph(f'<b><font size="14">${cp}</font></b>', S["body"])],
+         Paragraph(f'<b><font size="14">{fin.get("number_of_analysts", "N/A")}</font></b>', S["body"]),
+         Paragraph(f'<b><font size="14">{tp_fmt}</font></b>', S["body"]),
+         Paragraph(f'<b><font size="14">${cp}</font></b>',    S["body"])],
     ]
-    ctbl = Table(consensus, colWidths=[1.65*inch]*4)
+    ctbl = Table(consensus, colWidths=[1.65 * inch] * 4)
     ctbl.setStyle(TableStyle([
-        ("BACKGROUND", (0,0),(-1,-1), LIGHT),
-        ("BACKGROUND", (0,0),(0,-1),  colors.HexColor(rec_bg_hex)),
-        ("ALIGN",      (0,0),(-1,-1), "CENTER"),
-        ("VALIGN",     (0,0),(-1,-1), "MIDDLE"),
-        ("PADDING",    (0,0),(-1,-1), 8),
-        ("GRID",       (0,0),(-1,-1), 0.5, DIVIDER),
-        ("LINEABOVE",  (0,0),(-1,0),  1.5, COBALT),
+        ("BACKGROUND", (0, 0), (-1, -1), LIGHT),
+        ("BACKGROUND", (0, 0), (0, -1),  colors.HexColor(rec_bg_hex)),
+        ("ALIGN",      (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
+        ("PADDING",    (0, 0), (-1, -1), 8),
+        ("GRID",       (0, 0), (-1, -1), 0.5, DIVIDER),
+        ("LINEABOVE",  (0, 0), (-1, 0),  1.5, COBALT),
     ]))
     story.append(ctbl)
     story.append(PageBreak())
 
-    # PAGE 3 — FINANCIALS
-    story.append(Spacer(1, 0.1*inch))
+    # ── PAGE 3 — FINANCIALS ───────────────────────────────────────────────────
+    story.append(Spacer(1, 0.1 * inch))
     story.append(Paragraph("FINANCIAL ANALYSIS", S["kicker"]))
     story.append(Paragraph("Key Financial Metrics & Performance", S["h1"]))
     story.append(HRFlowable(width="100%", thickness=1.5, color=COBALT, spaceAfter=10))
@@ -522,23 +587,24 @@ def generate_pdf(memo_text, ticker, company_name,
     if mb and gb:
         chart_tbl = Table([[
             Table([[Paragraph("MARGIN ANALYSIS", S["kicker"])],
-                   [Image(mb, width=3.5*inch, height=1.6*inch)]],
-                  colWidths=[3.6*inch]),
+                   [Image(mb, width=3.5 * inch, height=1.6 * inch)]],
+                  colWidths=[3.6 * inch]),
             Table([[Paragraph("YoY GROWTH", S["kicker"])],
-                   [Image(gb, width=2.5*inch, height=1.6*inch)]],
-                  colWidths=[2.8*inch]),
-        ]], colWidths=[3.7*inch, 2.9*inch])
+                   [Image(gb, width=2.5 * inch, height=1.6 * inch)]],
+                  colWidths=[2.8 * inch]),
+        ]], colWidths=[3.7 * inch, 2.9 * inch])
         chart_tbl.setStyle(TableStyle([
-            ("VALIGN",     (0,0),(-1,-1), "TOP"),
-            ("BACKGROUND", (0,0),(-1,-1), LIGHT),
-            ("PADDING",    (0,0),(-1,-1), 8),
-            ("GRID",       (0,0),(-1,-1), 0.5, DIVIDER),
+            ("VALIGN",     (0, 0), (-1, -1), "TOP"),
+            ("BACKGROUND", (0, 0), (-1, -1), LIGHT),
+            ("PADDING",    (0, 0), (-1, -1), 8),
+            ("GRID",       (0, 0), (-1, -1), 0.5, DIVIDER),
         ]))
         story.append(chart_tbl)
         story.append(Spacer(1, 10))
 
     story.append(SectionLabel("Comprehensive Financial Data"))
     story.append(Spacer(1, 6))
+
     fin_pairs = [
         ("Revenue (TTM)",       safe("revenue_ttm")),
         ("Gross Profit",        safe("gross_profit")),
@@ -559,24 +625,27 @@ def generate_pdf(memo_text, ticker, company_name,
         ("Debt/Equity",         safe("debt_to_equity")),
         ("Current Ratio",       safe("current_ratio")),
     ]
+
     fin_rows = [[Paragraph("METRIC", S["th"]), Paragraph("VALUE", S["th"]),
                  Paragraph("METRIC", S["th"]), Paragraph("VALUE", S["th"])]]
     lbl_s = ParagraphStyle("fl", fontName="Helvetica-Bold", fontSize=8.5, textColor=NAVY)
     val_s = ParagraphStyle("fv", fontName="Helvetica",      fontSize=8.5, textColor=CHARCOAL)
+
     for i in range(0, len(fin_pairs), 2):
         ll, lv = fin_pairs[i]
-        rl, rv = fin_pairs[i+1] if i+1 < len(fin_pairs) else ("","")
+        rl, rv = fin_pairs[i + 1] if i + 1 < len(fin_pairs) else ("", "")
         fin_rows.append([Paragraph(ll, lbl_s), Paragraph(lv, val_s),
                          Paragraph(rl, lbl_s), Paragraph(rv, val_s)])
-    fin_tbl = Table(fin_rows, colWidths=[1.8*inch, 1.5*inch, 1.8*inch, 1.5*inch])
+
+    fin_tbl = Table(fin_rows, colWidths=[1.8 * inch, 1.5 * inch, 1.8 * inch, 1.5 * inch])
     fin_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,0),   NAVY),
-        ("TEXTCOLOR",     (0,0),(-1,0),   WHITE),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1),  [LIGHT, WHITE]),
-        ("PADDING",       (0,0),(-1,-1),  7),
-        ("GRID",          (0,0),(-1,-1),  0.3, DIVIDER),
-        ("LINEBELOW",     (0,0),(-1,0),   1.5, GOLD),
-        ("VALIGN",        (0,0),(-1,-1),  "MIDDLE"),
+        ("BACKGROUND",    (0, 0), (-1, 0),  NAVY),
+        ("TEXTCOLOR",     (0, 0), (-1, 0),  WHITE),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [LIGHT, WHITE]),
+        ("PADDING",       (0, 0), (-1, -1), 7),
+        ("GRID",          (0, 0), (-1, -1), 0.3, DIVIDER),
+        ("LINEBELOW",     (0, 0), (-1, 0),  1.5, GOLD),
+        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
     ]))
     story.append(fin_tbl)
     story.append(Spacer(1, 10))
@@ -586,8 +655,8 @@ def generate_pdf(memo_text, ticker, company_name,
         story.extend(_flowables(sections["financials"], S))
     story.append(PageBreak())
 
-    # PAGE 4 — RISK
-    story.append(Spacer(1, 0.1*inch))
+    # ── PAGE 4 — RISK ─────────────────────────────────────────────────────────
+    story.append(Spacer(1, 0.1 * inch))
     story.append(Paragraph("RISK & MARKET INTELLIGENCE", S["kicker"]))
     story.append(Paragraph("Risk Assessment & Recent Developments", S["h1"]))
     story.append(HRFlowable(width="100%", thickness=1.5, color=COBALT, spaceAfter=10))
@@ -595,32 +664,37 @@ def generate_pdf(memo_text, ticker, company_name,
     score, level = 5, "MEDIUM"
     if risk_assessment:
         sm = re.search(r'RISK SCORE[:\s]+(\d+)/10', risk_assessment, re.IGNORECASE)
-        lm = re.search(r'OVERALL RISK LEVEL[:\s]+(LOW|MEDIUM|HIGH)', risk_assessment, re.IGNORECASE)
-        if sm: score = int(sm.group(1))
-        if lm: level = lm.group(1).upper()
-
+        if sm:
+            score = int(sm.group(1))
+        # Derive level from score number so gauge and label always match.
+        # Never parse from Gemini text — it sometimes writes LOW for score 4
+        # causing "4/10 MEDIUM" on gauge but "LOW" in the label below it.
+        level = ("VERY HIGH" if score >= 9 else
+                 "HIGH"      if score >= 7 else
+                 "LOW"       if score <= 3 else
+                 "MEDIUM")
     flags      = fin.get("analyst_flags", []) or []
     flags_text = "\n".join([f"• {f}" for f in flags]) if flags else "• No critical flags detected"
 
     risk_row = Table([[
         Table([
             [Paragraph("RISK SCORE", S["kicker"])],
-            [Image(_make_gauge_chart(score), width=2.5*inch, height=1.5*inch)],
+            [Image(_make_gauge_chart(score), width=2.5 * inch, height=1.5 * inch)],
             [Paragraph(f"Overall Risk Level: <b>{level}</b>",
                 ParagraphStyle("rl", fontName="Helvetica", fontSize=8.5,
-                    textColor=CHARCOAL, leading=12))]
-        ], colWidths=[2.8*inch]),
+                    textColor=CHARCOAL, leading=12))],
+        ], colWidths=[2.8 * inch]),
         Table([
             [Paragraph("ANALYST FLAGS", S["kicker"])],
             [Paragraph(flags_text,
                 ParagraphStyle("fl2", fontName="Helvetica", fontSize=8.5,
                     textColor=CHARCOAL, leading=14, leftIndent=4))],
-        ], colWidths=[3.5*inch]),
-    ]], colWidths=[2.9*inch, 3.7*inch])
+        ], colWidths=[3.5 * inch]),
+    ]], colWidths=[2.9 * inch, 3.7 * inch])
     risk_row.setStyle(TableStyle([
-        ("VALIGN",       (0,0),(-1,-1), "TOP"),
-        ("LEFTPADDING",  (0,0),(-1,-1), 4),
-        ("RIGHTPADDING", (0,0),(-1,-1), 4),
+        ("VALIGN",       (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING",  (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
     story.append(risk_row)
     story.append(Spacer(1, 10))
@@ -637,8 +711,8 @@ def generate_pdf(memo_text, ticker, company_name,
         story.extend(_flowables(sections["developments"], S))
     story.append(PageBreak())
 
-    # PAGE 5 — VALUATION
-    story.append(Spacer(1, 0.1*inch))
+    # ── PAGE 5 — VALUATION ────────────────────────────────────────────────────
+    story.append(Spacer(1, 0.1 * inch))
     story.append(Paragraph("VALUATION & RECOMMENDATION", S["kicker"]))
     story.append(Paragraph("Investment Thesis & Price Target Analysis", S["h1"]))
     story.append(HRFlowable(width="100%", thickness=1.5, color=COBALT, spaceAfter=10))
@@ -648,31 +722,43 @@ def generate_pdf(memo_text, ticker, company_name,
         up_str    = f"+{upside:.1f}%" if upside >= 0 else f"{upside:.1f}%"
         up_hex    = "#065F46" if upside >= 0 else "#991B1B"
         up_bg_hex = "#D1FAE5" if upside >= 0 else "#FEE2E2"
-    except:
-        up_str = "N/A"; up_hex = "#065F46"; up_bg_hex = "#D1FAE5"
+    except Exception:
+        up_str    = "N/A"
+        up_hex    = "#065F46"
+        up_bg_hex = "#D1FAE5"
+
+    # FIX 3: Price target 2dp on page 5
+    try:
+        tp_p5 = f"${float(str(tp).replace(',', '')):.2f}"
+    except Exception:
+        tp_p5 = f"${tp}"
+
+    # FIX 2: STRONG_BUY never clipped on page 5
+    rec_font_p5 = "14" if len(rec) > 8 else ("16" if len(rec) > 6 else "18")
 
     up_tbl = Table([[
         Table([[Paragraph('<font color="#6B7280" size="8">CURRENT PRICE</font>', S["caption"])],
                [Paragraph(f'<b><font size="18">${cp}</font></b>', S["body"])]],
-              colWidths=[1.8*inch]),
+              colWidths=[1.8 * inch]),
         Table([[Paragraph('<font color="#6B7280" size="8">PRICE TARGET</font>', S["caption"])],
-               [Paragraph(f'<b><font size="18">${tp}</font></b>', S["body"])]],
-              colWidths=[1.8*inch]),
+               [Paragraph(f'<b><font size="18">{tp_p5}</font></b>', S["body"])]],
+              colWidths=[1.8 * inch]),
         Table([[Paragraph('<font color="#6B7280" size="8">POTENTIAL UPSIDE</font>', S["caption"])],
                [Paragraph(f'<b><font size="22" color="{up_hex}">{up_str}</font></b>', S["body"])]],
-              colWidths=[1.8*inch]),
+              colWidths=[1.8 * inch]),
         Table([[Paragraph('<font color="#6B7280" size="8">RECOMMENDATION</font>', S["caption"])],
-               [Paragraph(f'<b><font size="18" color="{up_hex}">{rec.upper()}</font></b>', S["body"])]],
-              colWidths=[1.8*inch]),
-    ]], colWidths=[1.65*inch]*4)
+               [Paragraph(f'<b><font size="{rec_font_p5}" color="{up_hex}">{rec.upper()}</font></b>',
+                          S["body"])]],
+              colWidths=[1.8 * inch]),
+    ]], colWidths=[1.65 * inch] * 4)
     up_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0,0),(-1,-1), LIGHT),
-        ("BACKGROUND", (2,0),(3,0),   colors.HexColor(up_bg_hex)),
-        ("ALIGN",      (0,0),(-1,-1), "CENTER"),
-        ("VALIGN",     (0,0),(-1,-1), "MIDDLE"),
-        ("PADDING",    (0,0),(-1,-1), 10),
-        ("GRID",       (0,0),(-1,-1), 0.5, DIVIDER),
-        ("LINEABOVE",  (0,0),(-1,0),  2.5, colors.HexColor(up_hex)),
+        ("BACKGROUND", (0, 0), (-1, -1), LIGHT),
+        ("BACKGROUND", (2, 0), (3, 0),   colors.HexColor(up_bg_hex)),
+        ("ALIGN",      (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
+        ("PADDING",    (0, 0), (-1, -1), 10),
+        ("GRID",       (0, 0), (-1, -1), 0.5, DIVIDER),
+        ("LINEABOVE",  (0, 0), (-1, 0),  2.5, colors.HexColor(up_hex)),
     ]))
     story.append(up_tbl)
     story.append(Spacer(1, 12))
@@ -683,7 +769,7 @@ def generate_pdf(memo_text, ticker, company_name,
         story.extend(_flowables(sections["valuation"], S))
     story.append(Spacer(1, 12))
 
-    exec_lines = [l.strip() for l in sections.get("exec","").split("\n")
+    exec_lines = [l.strip() for l in sections.get("exec", "").split("\n")
                   if l.strip()][:4]
     if exec_lines:
         story.append(SectionLabel("Investment Thesis Summary"))
@@ -691,16 +777,17 @@ def generate_pdf(memo_text, ticker, company_name,
         thesis_rows = [[Paragraph("KEY INVESTMENT POINTS", S["kicker"])]]
         for item in exec_lines:
             item = re.sub(r'\*\*(.+?)\*\*', r'\1', item)
+            item = re.sub(r'^\*\s+', '', item)  # FIX 4
             thesis_rows.append([Paragraph(f"<bullet>&bull;</bullet> {item}",
                 ParagraphStyle("ti", fontName="Helvetica", fontSize=9,
                     textColor=CHARCOAL, leading=14, leftIndent=10))])
-        tt = Table(thesis_rows, colWidths=[6.3*inch])
+        tt = Table(thesis_rows, colWidths=[6.3 * inch])
         tt.setStyle(TableStyle([
-            ("BACKGROUND", (0,0),(-1,-1), SKY),
-            ("BACKGROUND", (0,0),(-1,0),  NAVY),
-            ("TEXTCOLOR",  (0,0),(-1,0),  WHITE),
-            ("PADDING",    (0,0),(-1,-1), 9),
-            ("LINEBEFORE", (0,0),(0,-1),  3, GOLD),
+            ("BACKGROUND", (0, 0), (-1, -1), SKY),
+            ("BACKGROUND", (0, 0), (-1, 0),  NAVY),
+            ("TEXTCOLOR",  (0, 0), (-1, 0),  WHITE),
+            ("PADDING",    (0, 0), (-1, -1), 9),
+            ("LINEBEFORE", (0, 0), (0, -1),  3, GOLD),
         ]))
         story.append(tt)
         story.append(Spacer(1, 12))
@@ -710,7 +797,9 @@ def generate_pdf(memo_text, ticker, company_name,
         story.append(Spacer(1, 6))
         for line in risk_assessment.strip().split("\n"):
             l = line.strip()
-            if not l: story.append(Spacer(1,3)); continue
+            if not l:
+                story.append(Spacer(1, 3))
+                continue
             story.append(Paragraph(re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', l), S["body"]))
 
     story.append(Spacer(1, 16))
@@ -724,21 +813,24 @@ def generate_pdf(memo_text, ticker, company_name,
         "Always conduct your own due diligence and consult a qualified financial advisor "
         "before making investment decisions.", S["disc"]))
 
-    # BUILD with cover + content templates
+    # ── BUILD ─────────────────────────────────────────────────────────────────
     from reportlab.platypus.doctemplate import PageTemplate
     from reportlab.platypus.frames import Frame
     from reportlab.platypus import NextPageTemplate
 
     W, H = letter
     doc.addPageTemplates([
-        PageTemplate(id='Cover',
-            frames=[Frame(0,0,W,H, leftPadding=0, bottomPadding=0,
+        PageTemplate(
+            id='Cover',
+            frames=[Frame(0, 0, W, H,
+                          leftPadding=0, bottomPadding=0,
                           rightPadding=0, topPadding=0, id='cover')],
-            onPage=lambda c,d: None),
-        PageTemplate(id='Content',
+            onPage=lambda c, d: None),
+        PageTemplate(
+            id='Content',
             frames=[Frame(doc.leftMargin, doc.bottomMargin,
-                          W-doc.leftMargin-doc.rightMargin,
-                          H-doc.topMargin-doc.bottomMargin, id='normal')],
+                          W - doc.leftMargin - doc.rightMargin,
+                          H - doc.topMargin  - doc.bottomMargin, id='normal')],
             onPage=_header_footer),
     ])
     story.insert(1, NextPageTemplate('Content'))
