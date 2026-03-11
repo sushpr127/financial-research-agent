@@ -1,125 +1,240 @@
 import requests
+import os
 import re
+import time
+import json
+from bs4 import BeautifulSoup
+import warnings
+from bs4 import XMLParsedAsHTMLWarning
 from dotenv import load_dotenv
 
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 load_dotenv()
 
 HEADERS = {
-    "User-Agent": "financial-research-agent contact@example.com"
+    "User-Agent": "financial-research-agent contact@example.com",
+    "Accept-Encoding": "gzip, deflate",
 }
 
-def get_company_cik(ticker: str) -> str:
-    tickers_url = "https://www.sec.gov/files/company_tickers.json"
-    response = requests.get(tickers_url, headers=HEADERS)
-    data = response.json()
-    
-    ticker_upper = ticker.upper()
-    for entry in data.values():
-        if entry["ticker"] == ticker_upper:
-            return str(entry["cik_str"]).zfill(10)
-    
-    raise ValueError(f"Ticker {ticker} not found in SEC database")
 
-
-def get_latest_10k_text(ticker: str) -> dict:
-    cik = get_company_cik(ticker)
-    
-    # Get filing history
-    url = f"https://data.sec.gov/submissions/CIK{cik}.json"
+def safe_request(url):
     response = requests.get(url, headers=HEADERS)
+    if response.status_code != 200:
+        print(f"Request failed: {response.status_code} for {url}")
+        return None
+    time.sleep(0.2)  # respect SEC rate limits
+    return response
+
+
+def get_company_cik(ticker: str) -> str:
+    url = "https://www.sec.gov/files/company_tickers.json"
+    response = safe_request(url)
+    if not response:
+        raise ValueError("Could not fetch SEC tickers")
     data = response.json()
-    
-    company_name = data.get("name", ticker)
-    filings = data.get("filings", {}).get("recent", {})
-    
-    forms = filings.get("form", [])
-    dates = filings.get("filingDate", [])
-    accession_numbers = filings.get("accessionNumber", [])
-    
-    # Find most recent 10-K
-    ten_k_index = None
-    for i, form in enumerate(forms):
-        if form == "10-K":
-            ten_k_index = i
-            break
-    
-    if ten_k_index is None:
-        raise ValueError(f"No 10-K found for {ticker}")
-    
-    filing_date = dates[ten_k_index]
-    accession = accession_numbers[ten_k_index].replace("-", "")
-    accession_dashed = accession_numbers[ten_k_index]
-    
-    # Get the filing index to find the RIGHT document (not XBRL)
-    index_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/{accession_dashed}-index.htm"
-    index_response = requests.get(index_url, headers=HEADERS)
-    
-    # Find the main 10-K HTM document from the index
-    # Look for the largest .htm file that isn't the XBRL instance doc
-    filing_index_url = f"https://data.sec.gov/submissions/CIK{cik}.json"
-    
-    # Get document list for this specific filing
-    doc_index_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=10-K&dateb=&owner=include&count=1&search_text="
-    
-    # Directly get filing index JSON
-    index_json_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/index.json"
-    index_json_response = requests.get(index_json_url, headers=HEADERS)
-    index_data = index_json_response.json()
-    
-    # Find the main readable 10-K document (largest htm, not xbrl)
+    for entry in data.values():
+        if entry["ticker"].lower() == ticker.lower():
+            return str(entry["cik_str"]).zfill(10)
+    raise ValueError(f"Ticker {ticker} not found")
+
+
+def get_10k_filings(cik: str, limit: int = 1) -> list:
+    url = f"https://data.sec.gov/submissions/CIK{cik}.json"
+    response = safe_request(url)
+    if not response:
+        return []
+    data = response.json()
+    filings = []
+    recent = data["filings"]["recent"]
+    for i in range(len(recent["form"])):
+        if recent["form"][i] == "10-K":
+            filings.append({
+                "accession": recent["accessionNumber"][i],
+                "filing_date": recent["filingDate"][i],
+                "primary_doc": recent["primaryDocument"][i],
+                "company_name": data.get("name", "Unknown")
+            })
+    return filings[:limit]
+
+
+def get_best_htm_doc(cik: str, accession: str) -> str:
+    """
+    Find the largest readable HTM file in the filing.
+    This is more reliable than using primaryDocument which may be XBRL.
+    """
+    acc_no_dash = accession.replace("-", "")
+    index_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no_dash}/index.json"
+    response = safe_request(index_url)
+    if not response:
+        return None
+
+    index_data = response.json()
     best_doc = None
     best_size = 0
-    
+
     for item in index_data.get("directory", {}).get("item", []):
         name = item.get("name", "")
         size = int(item.get("size", 0) or 0)
-        # Pick the largest .htm file that looks like the main filing
-        if (name.endswith(".htm") and 
-            not name.startswith("R") and  # skip inline XBRL viewer files
-            "xbrl" not in name.lower() and
-            size > best_size):
+        if (name.endswith(".htm") and
+                not name.startswith("R") and
+                "xbrl" not in name.lower() and
+                size > best_size):
             best_doc = name
             best_size = size
-    
-    if not best_doc:
-        raise ValueError("Could not find readable 10-K document")
-    
-    doc_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}/{best_doc}"
-    doc_response = requests.get(doc_url, headers=HEADERS)
-    
-    # Strip HTML tags and clean whitespace
-    raw_text = doc_response.text
-    clean_text = re.sub(r'<[^>]+>', ' ', raw_text)
-    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-    
-    # Skip past any remaining metadata noise at the start
-    # Look for where real content begins (usually after "UNITED STATES")
-    start_markers = ["UNITED STATES", "Annual Report", "ANNUAL REPORT", "Item 1."]
-    start_pos = 0
-    for marker in start_markers:
-        pos = clean_text.find(marker)
-        if pos != -1:
-            start_pos = pos
-            break
-    
-    excerpt = clean_text[start_pos:start_pos + 3000]
-    
+
+    return best_doc
+
+
+def download_filing_html(cik: str, accession: str) -> str:
+    """Download the main 10-K HTML document."""
+    acc_no_dash = accession.replace("-", "")
+
+    # Try to get the best HTM document first
+    best_doc = get_best_htm_doc(cik, accession)
+
+    if best_doc:
+        url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no_dash}/{best_doc}"
+    else:
+        # Fallback to primary document
+        filing = get_10k_filings(cik, limit=1)
+        if not filing:
+            return None
+        primary_doc = filing[0]["primary_doc"]
+        url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no_dash}/{primary_doc}"
+
+    response = requests.get(url, headers=HEADERS)
+    if response.status_code != 200:
+        return None
+    time.sleep(0.2)
+    return response.text
+
+
+def _regex_extract_section(text: str, start_pattern: str, end_pattern: str, min_words: int = 200) -> str:
+    """
+    Extract a section using regex boundaries.
+    Picks the longest match to avoid TOC entries.
+    Directly adapted from your sec_service.py approach.
+    """
+    pattern = re.compile(
+        rf'{start_pattern}(.*?){end_pattern}',
+        re.IGNORECASE | re.DOTALL
+    )
+    matches = pattern.findall(text)
+
+    if not matches:
+        return None
+
+    # Pick the longest valid match (TOC entries are short, real sections are long)
+    best = max(matches, key=lambda x: len(x.split()))
+
+    if len(best.split()) < min_words:
+        return None
+
+    return best.strip()
+
+
+def extract_sections(html_content: str) -> dict:
+    """
+    Extract Business Overview, Risk Factors, and MD&A from 10-K HTML.
+    Uses BeautifulSoup + lxml (your proven approach from sec_service.py).
+    """
+    soup = BeautifulSoup(html_content, "lxml")
+
+    # Get clean text preserving line structure — key insight from your code
+    text = soup.get_text(separator="\n")
+    text = re.sub(r'\xa0', ' ', text)       # remove non-breaking spaces
+    text = re.sub(r'\n+', '\n', text)        # normalize newlines
+    text = re.sub(r'[ \t]+', ' ', text)      # normalize spaces
+
+    # --- Risk Factors (Item 1A) — your exact regex, proven to work ---
+    risk_factors = _regex_extract_section(
+        text,
+        start_pattern=r'item\s+1a[\.\-–—:]?\s*risk\s*factors?',
+        end_pattern=r'item\s+1b',
+        min_words=200
+    )
+
+    # --- Business Overview (Item 1) ---
+    business = _regex_extract_section(
+        text,
+        start_pattern=r'item\s+1[\.\-–—:]?\s*business',
+        end_pattern=r'item\s+1a',
+        min_words=100
+    )
+
+    # --- MD&A (Item 7) ---
+    mda = _regex_extract_section(
+        text,
+        start_pattern=r'item\s+7[\.\-–—:]?\s*management',
+        end_pattern=r'item\s+7a',
+        min_words=200
+    )
+
+    # Fallback for MD&A if Item 7A doesn't exist as boundary
+    if not mda:
+        mda = _regex_extract_section(
+            text,
+            start_pattern=r'item\s+7[\.\-–—:]?\s*management',
+            end_pattern=r'item\s+8',
+            min_words=200
+        )
+
+    # Cap each section to avoid token overload
+    def cap(text, max_chars):
+        if text and len(text) > max_chars:
+            return text[:max_chars]
+        return text
+
+    return {
+        "business_overview": cap(business, 1500) or "Business overview not extracted.",
+        "risk_factors": cap(risk_factors, 2500) or "Risk factors not extracted.",
+        "management_discussion": cap(mda, 2500) or "MD&A not extracted."
+    }
+
+
+def get_latest_10k_text(ticker: str) -> dict:
+    """
+    Main function — fetch and extract 3 key sections from latest 10-K.
+    """
+    cik = get_company_cik(ticker)
+
+    # Get latest 10-K filing metadata
+    filings = get_10k_filings(cik, limit=1)
+    if not filings:
+        raise ValueError(f"No 10-K found for {ticker}")
+
+    filing = filings[0]
+    company_name = filing["company_name"]
+    filing_date = filing["filing_date"]
+    accession = filing["accession"]
+
+    # Download HTML
+    html = download_filing_html(cik, accession)
+    if not html:
+        raise ValueError(f"Could not download 10-K for {ticker}")
+
+    # Extract sections
+    sections = extract_sections(html)
+
     return {
         "ticker": ticker.upper(),
         "company_name": company_name,
         "filing_date": filing_date,
-        "excerpt": excerpt,
-        "source_url": doc_url
+        "business_overview": sections["business_overview"],
+        "risk_factors": sections["risk_factors"],
+        "management_discussion": sections["management_discussion"],
     }
 
 
 if __name__ == "__main__":
     print("Testing SEC Filing Tool...\n")
     result = get_latest_10k_text("AAPL")
-    
+
     print(f"Company:      {result['company_name']}")
-    print(f"Ticker:       {result['ticker']}")
     print(f"Filing Date:  {result['filing_date']}")
-    print(f"Source URL:   {result['source_url']}")
-    print(f"\n--- 10-K Excerpt (first 500 chars) ---")
-    print(result['excerpt'][:500])
+    print(f"\n--- Business Overview (first 400 chars) ---")
+    print(result['business_overview'][:400])
+    print(f"\n--- Risk Factors (first 400 chars) ---")
+    print(result['risk_factors'][:400])
+    print(f"\n--- MD&A (first 400 chars) ---")
+    print(result['management_discussion'][:400])
