@@ -10,4 +10,4 @@ node_modules/
 .next/
 
 
-echo ".cache/" >> .gitignore
+echo ".cache/" >> .gitignoreoutputs/
