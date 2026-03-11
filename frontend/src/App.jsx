@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 const STAGES = [
-  { id: "news",    label: "Market Intelligence", icon: "◈", detail: "Scanning news & sentiment" },
-  { id: "filing",  label: "SEC Filing Analysis",  icon: "◎", detail: "Parsing 10-K documents"    },
-  { id: "finance", label: "Financial Modeling",   icon: "◆", detail: "Fetching live market data"  },
-  { id: "risk",    label: "Risk Quantification",  icon: "◉", detail: "Stress-testing the model"  },
-  { id: "memo",    label: "Memo Synthesis",       icon: "◇", detail: "Drafting investment thesis" },
+  { id: "news",      label: "Market Intelligence",  icon: "◈", detail: "Scanning news & sentiment"  },
+  { id: "filing",    label: "SEC Filing Analysis",   icon: "◎", detail: "Parsing 10-K documents"     },
+  { id: "finance",   label: "Financial Modeling",    icon: "◆", detail: "Fetching live market data"  },
+  { id: "risk",      label: "Risk Quantification",   icon: "◉", detail: "Stress-testing the model"  },
+  { id: "valuation", label: "Valuation Models",      icon: "◐", detail: "Running DCF & comps"        },
+  { id: "memo",      label: "Memo Synthesis",        icon: "◇", detail: "Drafting investment thesis" },
 ];
 
 const COMPANIES = [
-  // ── Mega-cap Tech ──────────────────────────────────────────────────────────
   { ticker: "NVDA",  name: "NVIDIA Corporation",              sector: "Technology"   },
   { ticker: "AAPL",  name: "Apple Inc.",                      sector: "Technology"   },
   { ticker: "MSFT",  name: "Microsoft Corporation",           sector: "Technology"   },
@@ -41,7 +41,6 @@ const COMPANIES = [
   { ticker: "HPQ",   name: "HP Inc.",                         sector: "Technology"   },
   { ticker: "DELL",  name: "Dell Technologies Inc.",          sector: "Technology"   },
   { ticker: "ACN",   name: "Accenture plc",                   sector: "Technology"   },
-  // ── Consumer / E-commerce ─────────────────────────────────────────────────
   { ticker: "AMZN",  name: "Amazon.com Inc.",                 sector: "Consumer"     },
   { ticker: "TSLA",  name: "Tesla Inc.",                      sector: "Consumer"     },
   { ticker: "WMT",   name: "Walmart Inc.",                    sector: "Consumer"     },
@@ -62,7 +61,6 @@ const COMPANIES = [
   { ticker: "EBAY",  name: "eBay Inc.",                       sector: "Consumer"     },
   { ticker: "PM",    name: "Philip Morris International",     sector: "Consumer"     },
   { ticker: "RIVN",  name: "Rivian Automotive Inc.",          sector: "Consumer"     },
-  // ── Financials ────────────────────────────────────────────────────────────
   { ticker: "BRK-B", name: "Berkshire Hathaway Inc. (B)",     sector: "Financials"   },
   { ticker: "JPM",   name: "JPMorgan Chase & Co.",            sector: "Financials"   },
   { ticker: "V",     name: "Visa Inc.",                       sector: "Financials"   },
@@ -81,7 +79,6 @@ const COMPANIES = [
   { ticker: "ICE",   name: "Intercontinental Exchange Inc.",  sector: "Financials"   },
   { ticker: "CME",   name: "CME Group Inc.",                  sector: "Financials"   },
   { ticker: "COIN",  name: "Coinbase Global Inc.",            sector: "Financials"   },
-  // ── Healthcare ────────────────────────────────────────────────────────────
   { ticker: "LLY",   name: "Eli Lilly and Company",           sector: "Healthcare"   },
   { ticker: "UNH",   name: "UnitedHealth Group Inc.",         sector: "Healthcare"   },
   { ticker: "JNJ",   name: "Johnson & Johnson",               sector: "Healthcare"   },
@@ -101,7 +98,6 @@ const COMPANIES = [
   { ticker: "BSX",   name: "Boston Scientific Corporation",   sector: "Healthcare"   },
   { ticker: "REGN",  name: "Regeneron Pharmaceuticals Inc.",  sector: "Healthcare"   },
   { ticker: "VRTX",  name: "Vertex Pharmaceuticals Inc.",     sector: "Healthcare"   },
-  // ── Energy ────────────────────────────────────────────────────────────────
   { ticker: "XOM",   name: "Exxon Mobil Corporation",         sector: "Energy"       },
   { ticker: "CVX",   name: "Chevron Corporation",             sector: "Energy"       },
   { ticker: "COP",   name: "ConocoPhillips",                  sector: "Energy"       },
@@ -110,7 +106,6 @@ const COMPANIES = [
   { ticker: "PSX",   name: "Phillips 66",                     sector: "Energy"       },
   { ticker: "MPC",   name: "Marathon Petroleum Corporation",  sector: "Energy"       },
   { ticker: "OXY",   name: "Occidental Petroleum Corp.",      sector: "Energy"       },
-  // ── Industrials ───────────────────────────────────────────────────────────
   { ticker: "GE",    name: "GE Aerospace",                    sector: "Industrials"  },
   { ticker: "GEV",   name: "GE Vernova Inc.",                 sector: "Industrials"  },
   { ticker: "CAT",   name: "Caterpillar Inc.",                sector: "Industrials"  },
@@ -125,24 +120,20 @@ const COMPANIES = [
   { ticker: "FDX",   name: "FedEx Corporation",               sector: "Industrials"  },
   { ticker: "MMM",   name: "3M Company",                      sector: "Industrials"  },
   { ticker: "LIN",   name: "Linde plc",                       sector: "Industrials"  },
-  // ── Telecom & Media ───────────────────────────────────────────────────────
   { ticker: "TMUS",  name: "T-Mobile US Inc.",                sector: "Telecom"      },
   { ticker: "VZ",    name: "Verizon Communications Inc.",     sector: "Telecom"      },
   { ticker: "T",     name: "AT&T Inc.",                       sector: "Telecom"      },
   { ticker: "DIS",   name: "The Walt Disney Company",         sector: "Media"        },
   { ticker: "CMCSA", name: "Comcast Corporation",             sector: "Media"        },
   { ticker: "SPOT",  name: "Spotify Technology S.A.",         sector: "Media"        },
-  // ── Utilities ─────────────────────────────────────────────────────────────
   { ticker: "NEE",   name: "NextEra Energy Inc.",             sector: "Utilities"    },
   { ticker: "DUK",   name: "Duke Energy Corporation",         sector: "Utilities"    },
   { ticker: "SO",    name: "The Southern Company",            sector: "Utilities"    },
   { ticker: "D",     name: "Dominion Energy Inc.",            sector: "Utilities"    },
-  // ── Fintech ───────────────────────────────────────────────────────────────
   { ticker: "SQ",    name: "Block Inc.",                      sector: "Fintech"      },
   { ticker: "AFRM",  name: "Affirm Holdings Inc.",            sector: "Fintech"      },
   { ticker: "SOFI",  name: "SoFi Technologies Inc.",          sector: "Fintech"      },
   { ticker: "HOOD",  name: "Robinhood Markets Inc.",          sector: "Fintech"      },
-  // ── AI / Cloud / Cybersecurity ────────────────────────────────────────────
   { ticker: "ARM",   name: "Arm Holdings plc",                sector: "Technology"   },
   { ticker: "SNOW",  name: "Snowflake Inc.",                  sector: "Technology"   },
   { ticker: "DDOG",  name: "Datadog Inc.",                    sector: "Technology"   },
@@ -151,37 +142,26 @@ const COMPANIES = [
   { ticker: "UBER",  name: "Uber Technologies Inc.",          sector: "Technology"   },
 ];
 
-// Deduplicate by ticker
 const seen = new Set();
 const UNIQUE_COMPANIES = COMPANIES.filter(c => {
   if (seen.has(c.ticker)) return false;
-  seen.add(c.ticker);
-  return true;
+  seen.add(c.ticker); return true;
 });
 
 const SECTOR_COLORS = {
-  Technology:  "#3b82f6",
-  Financials:  "#22c55e",
-  Healthcare:  "#a78bfa",
-  Consumer:    "#f59e0b",
-  Energy:      "#fb923c",
-  Industrials: "#94a3b8",
-  Utilities:   "#06b6d4",
-  Media:       "#ec4899",
-  Telecom:     "#14b8a6",
-  Fintech:     "#34d399",
+  Technology: "#3b82f6", Financials: "#22c55e", Healthcare: "#a78bfa",
+  Consumer: "#f59e0b", Energy: "#fb923c", Industrials: "#94a3b8",
+  Utilities: "#06b6d4", Media: "#ec4899", Telecom: "#14b8a6", Fintech: "#34d399",
 };
 
 function TickerInput({ onSubmit, loading }) {
-  const [value,        setValue]        = useState("");
-  const [focused,      setFocused]      = useState(false);
+  const [value, setValue] = useState("");
+  const [focused, setFocused] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [highlighted,  setHighlighted]  = useState(0);
-  const [dropdownPos,  setDropdownPos]  = useState(null);
-  const inputRef = useRef(null);
-  const wrapRef  = useRef(null);
+  const [highlighted, setHighlighted] = useState(0);
+  const [dropdownPos, setDropdownPos] = useState(null);
+  const wrapRef = useRef(null);
 
-  // ── THE FIX: no slice when empty — show ALL companies ────────────────────
   const filtered = value.length === 0
     ? UNIQUE_COMPANIES
     : UNIQUE_COMPANIES.filter(c =>
@@ -192,11 +172,7 @@ function TickerInput({ onSubmit, loading }) {
   useEffect(() => {
     if (showDropdown && wrapRef.current) {
       const rect = wrapRef.current.getBoundingClientRect();
-      setDropdownPos({
-        top:   rect.bottom + 2,
-        left:  rect.left,
-        width: rect.width,
-      });
+      setDropdownPos({ top: rect.bottom + 2, left: rect.left, width: rect.width });
     }
   }, [showDropdown, value]);
 
@@ -204,13 +180,7 @@ function TickerInput({ onSubmit, loading }) {
     e.preventDefault();
     if (value.trim()) { onSubmit(value.trim().toUpperCase()); setShowDropdown(false); }
   };
-
-  const pick = (ticker) => {
-    setValue(ticker);
-    setShowDropdown(false);
-    onSubmit(ticker);
-  };
-
+  const pick = (ticker) => { setValue(ticker); setShowDropdown(false); onSubmit(ticker); };
   const onKeyDown = (e) => {
     if (!showDropdown) return;
     if (e.key === "ArrowDown") { e.preventDefault(); setHighlighted(h => Math.min(h + 1, filtered.length - 1)); }
@@ -222,79 +192,33 @@ function TickerInput({ onSubmit, loading }) {
   const dropdownPortal = showDropdown && filtered.length > 0 && dropdownPos
     ? createPortal(
         <div style={{
-          position:   "fixed",
-          top:        dropdownPos.top,
-          left:       dropdownPos.left,
-          width:      dropdownPos.width,
-          zIndex:     99999,
-          background: "#0d1626",
-          border:     "1px solid #3b82f6",
-          borderRadius: "0 0 8px 8px",
-          overflowX:  "hidden",
-          overflowY:  "scroll",
-          WebkitOverflowScrolling: "touch",
-          maxHeight:  `${Math.min(400, window.innerHeight - dropdownPos.top - 16)}px`,
-          boxShadow:  "0 24px 64px rgba(0,0,0,0.85)",
-          fontFamily: "'JetBrains Mono', monospace",
+          position: "fixed", top: dropdownPos.top, left: dropdownPos.left,
+          width: dropdownPos.width, zIndex: 99999, background: "#0d1626",
+          border: "1px solid #3b82f6", borderRadius: "0 0 8px 8px",
+          overflowX: "hidden", overflowY: "scroll", WebkitOverflowScrolling: "touch",
+          maxHeight: `${Math.min(400, window.innerHeight - dropdownPos.top - 16)}px`,
+          boxShadow: "0 24px 64px rgba(0,0,0,0.85)", fontFamily: "'JetBrains Mono', monospace",
         }}>
-          {/* Sticky header */}
-          <div style={{
-            position: "sticky", top: 0,
-            padding: "6px 14px",
-            fontSize: "8px", letterSpacing: "0.28em", color: "#4d6b8a",
-            background: "#080f1c",
-            borderBottom: "1px solid #1a2d4a",
-          }}>
-            {value.length === 0
-              ? `ALL STOCKS — ${UNIQUE_COMPANIES.length} COMPANIES`
-              : `${filtered.length} RESULT${filtered.length !== 1 ? "S" : ""}`}
+          <div style={{ position: "sticky", top: 0, padding: "6px 14px", fontSize: "8px",
+            letterSpacing: "0.28em", color: "#4d6b8a", background: "#080f1c", borderBottom: "1px solid #1a2d4a" }}>
+            {value.length === 0 ? `ALL STOCKS — ${UNIQUE_COMPANIES.length} COMPANIES` : `${filtered.length} RESULT${filtered.length !== 1 ? "S" : ""}`}
           </div>
-
-          {/* Company rows */}
           {filtered.map((c, i) => (
-            <div
-              key={c.ticker}
-              onMouseDown={() => pick(c.ticker)}
-              onMouseEnter={() => setHighlighted(i)}
-              style={{
-                display: "flex", alignItems: "center", gap: "12px",
-                padding: "10px 14px", cursor: "pointer",
-                borderBottom: "1px solid rgba(26,45,74,0.4)",
-                background: i === highlighted ? "#111e35" : "transparent",
-                transition: "background 0.1s",
-              }}
-            >
-              <span style={{
-                minWidth: "60px", fontSize: "12px", fontWeight: "700",
-                letterSpacing: "0.05em",
-                color: SECTOR_COLORS[c.sector] || "#3b82f6",
-              }}>
-                {c.ticker}
-              </span>
-              <span style={{
-                flex: 1, fontSize: "11px", color: "#7a99bb",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}>
-                {c.name}
-              </span>
-              <span style={{
-                fontSize: "8px", letterSpacing: "0.1em",
-                color: SECTOR_COLORS[c.sector] || "#4d6b8a",
-                opacity: 0.7, whiteSpace: "nowrap",
-              }}>
-                {c.sector}
-              </span>
+            <div key={c.ticker} onMouseDown={() => pick(c.ticker)} onMouseEnter={() => setHighlighted(i)}
+              style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px",
+                cursor: "pointer", borderBottom: "1px solid rgba(26,45,74,0.4)",
+                background: i === highlighted ? "#111e35" : "transparent", transition: "background 0.1s" }}>
+              <span style={{ minWidth: "60px", fontSize: "12px", fontWeight: "700",
+                letterSpacing: "0.05em", color: SECTOR_COLORS[c.sector] || "#3b82f6" }}>{c.ticker}</span>
+              <span style={{ flex: 1, fontSize: "11px", color: "#7a99bb",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</span>
+              <span style={{ fontSize: "8px", letterSpacing: "0.1em",
+                color: SECTOR_COLORS[c.sector] || "#4d6b8a", opacity: 0.7, whiteSpace: "nowrap" }}>{c.sector}</span>
             </div>
           ))}
-
-          {/* Sticky footer */}
-          <div style={{
-            position: "sticky", bottom: 0,
-            padding: "6px 14px",
-            fontSize: "9px", fontStyle: "italic", letterSpacing: "0.06em",
-            color: "#4d6b8a", background: "#080f1c",
-            borderTop: "1px solid #1a2d4a",
-          }}>
+          <div style={{ position: "sticky", bottom: 0, padding: "6px 14px", fontSize: "9px",
+            fontStyle: "italic", letterSpacing: "0.06em", color: "#4d6b8a",
+            background: "#080f1c", borderTop: "1px solid #1a2d4a" }}>
             Type any ticker not listed — we'll analyze it
           </div>
         </div>,
@@ -308,19 +232,12 @@ function TickerInput({ onSubmit, loading }) {
       <form onSubmit={handle} className="input-row">
         <div className={`input-wrap ${focused ? "focused" : ""}`} ref={wrapRef}>
           <span className="input-prefix">$</span>
-          <input
-            ref={inputRef}
-            value={value}
+          <input value={value}
             onChange={e => { setValue(e.target.value.toUpperCase()); setShowDropdown(true); setHighlighted(0); }}
             onFocus={() => { setFocused(true); setShowDropdown(true); }}
             onBlur={() => { setFocused(false); setTimeout(() => setShowDropdown(false), 200); }}
-            onKeyDown={onKeyDown}
-            placeholder="e.g. AAPL or Apple"
-            maxLength={10}
-            disabled={loading}
-            autoComplete="off"
-            spellCheck="false"
-          />
+            onKeyDown={onKeyDown} placeholder="e.g. AAPL or Apple"
+            maxLength={10} disabled={loading} autoComplete="off" spellCheck="false" />
         </div>
         <button type="submit" disabled={loading || !value.trim()} className="run-btn">
           {loading ? <span className="btn-spinner" /> : <>ANALYZE <span className="btn-arrow">→</span></>}
@@ -341,14 +258,11 @@ function ProgressPanel({ stage, stages, elapsed }) {
       </div>
       <div className="stages">
         {stages.map((s, i) => {
-          const done   = i < current;
-          const active = i === current;
+          const done = i < current, active = i === current;
           return (
             <div key={s.id} className={`stage ${done ? "done" : active ? "active" : "pending"}`}>
               <div className="stage-track">
-                <div className={`stage-dot ${done ? "done" : active ? "active pulse" : ""}`}>
-                  {done ? "✓" : s.icon}
-                </div>
+                <div className={`stage-dot ${done ? "done" : active ? "active pulse" : ""}`}>{done ? "✓" : s.icon}</div>
                 {i < stages.length - 1 && <div className={`stage-line ${done ? "done" : ""}`} />}
               </div>
               <div className="stage-info">
@@ -370,27 +284,23 @@ function RiskGauge({ score }) {
   const level = score <= 3 ? "LOW" : score <= 6 ? "MEDIUM" : score <= 8 ? "HIGH" : "VERY HIGH";
   const color = score <= 3 ? "#22c55e" : score <= 6 ? "#f59e0b" : score <= 8 ? "#ef4444" : "#9333ea";
   const angle = -135 + (score / 10) * 270;
-  const r = 54; const cx = 70; const cy = 72;
-  const toRad = d => (d * Math.PI) / 180;
-  const arcX  = cx + r * Math.cos(toRad(angle));
-  const arcY  = cy + r * Math.sin(toRad(angle));
+  const r = 54, cx = 70, cy = 72;
+  const toRad = d => d * Math.PI / 180;
   return (
     <div className="gauge-wrap">
       <svg width="140" height="110" viewBox="0 0 140 110">
         <defs>
           <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="#22c55e" />
-            <stop offset="40%"  stopColor="#f59e0b" />
-            <stop offset="70%"  stopColor="#ef4444" />
-            <stop offset="100%" stopColor="#9333ea" />
+            <stop offset="0%" stopColor="#22c55e" /><stop offset="40%" stopColor="#f59e0b" />
+            <stop offset="70%" stopColor="#ef4444" /><stop offset="100%" stopColor="#9333ea" />
           </linearGradient>
         </defs>
-        <path d="M 16,72 A 54,54 0 1 1 124,72" fill="none" stroke="#1e293b"         strokeWidth="10" strokeLinecap="round" />
+        <path d="M 16,72 A 54,54 0 1 1 124,72" fill="none" stroke="#1e293b" strokeWidth="10" strokeLinecap="round" />
         <path d="M 16,72 A 54,54 0 1 1 124,72" fill="none" stroke="url(#gaugeGrad)" strokeWidth="10" strokeLinecap="round" strokeOpacity="0.3" />
-        <line x1={cx} y1={cy} x2={arcX} y2={arcY} stroke={color} strokeWidth="3" strokeLinecap="round" />
+        <line x1={cx} y1={cy} x2={cx + r * Math.cos(toRad(angle))} y2={cy + r * Math.sin(toRad(angle))} stroke={color} strokeWidth="3" strokeLinecap="round" />
         <circle cx={cx} cy={cy} r="5" fill={color} />
         <text x={cx} y={cy + 20} textAnchor="middle" fill="white" fontSize="18" fontWeight="700" fontFamily="monospace">{score}/10</text>
-        <text x={cx} y={cy + 33} textAnchor="middle" fill={color} fontSize="7"  fontWeight="600" letterSpacing="2" fontFamily="monospace">{level}</text>
+        <text x={cx} y={cy + 33} textAnchor="middle" fill={color} fontSize="7" fontWeight="600" letterSpacing="2" fontFamily="monospace">{level}</text>
       </svg>
     </div>
   );
@@ -405,39 +315,128 @@ function MetricCard({ label, value }) {
   );
 }
 
+// ── Valuation Panel ───────────────────────────────────────────────────────────
+function ValuationPanel({ vr }) {
+  if (!vr) return null;
+  const upside = vr.upside_pct ?? 0;
+  const isUp   = upside >= 0;
+  const color  = vr.verdict === "UNDERVALUED" ? "#22c55e"
+               : vr.verdict === "OVERVALUED"  ? "#ef4444" : "#f59e0b";
+
+  // Football field: position bars relative to price
+  const price    = vr.current_price || 1;
+  const allVals  = (vr.models || []).map(m => m.fair_value).concat([price]);
+  const minVal   = Math.min(...allVals) * 0.88;
+  const maxVal   = Math.max(...allVals) * 1.12;
+  const toPct    = v => ((v - minVal) / (maxVal - minVal)) * 100;
+
+  return (
+    <div className="valuation-block">
+      <div className="section-head">VALUATION — {(vr.model_type || "").toUpperCase()}</div>
+
+      {/* Verdict banner */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: "16px",
+        padding: "12px 16px", marginBottom: "16px",
+        background: `${color}12`, border: `1px solid ${color}40`, borderRadius: "6px",
+      }}>
+        <div style={{ fontSize: "16px", fontWeight: "800", color, fontFamily: "JetBrains Mono, monospace" }}>
+          {vr.verdict}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: "10px", color: "#94a3b8", letterSpacing: "0.06em" }}>WEIGHTED FAIR VALUE</div>
+          <div style={{ fontSize: "20px", fontWeight: "700", color: "white", fontFamily: "JetBrains Mono, monospace" }}>
+            ${vr.weighted_fair_value?.toFixed(2)}
+            <span style={{ fontSize: "13px", color, marginLeft: "10px" }}>
+              {isUp ? "▲" : "▼"} {Math.abs(upside).toFixed(1)}%
+            </span>
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: "9px", color: "#4d6b8a", letterSpacing: "0.1em" }}>RANGE</div>
+          <div style={{ fontSize: "11px", color: "#7a99bb", fontFamily: "JetBrains Mono, monospace" }}>
+            ${vr.valuation_range?.[0]} – ${vr.valuation_range?.[1]}
+          </div>
+        </div>
+      </div>
+
+      {/* Football field chart */}
+      <div style={{ marginBottom: "8px" }}>
+        <div style={{ fontSize: "8px", letterSpacing: "0.2em", color: "#4d6b8a", marginBottom: "12px" }}>
+          VALUATION FOOTBALL FIELD
+        </div>
+
+        {/* Current price marker */}
+        <div style={{ position: "relative", marginBottom: "20px", height: "4px" }}>
+          <div style={{
+            position: "absolute", left: `${toPct(price)}%`,
+            top: "-12px", bottom: "-8px", width: "1px",
+            background: "#ffffff50", zIndex: 2,
+          }} />
+          <div style={{
+            position: "absolute", left: `${toPct(price)}%`, top: "-22px",
+            fontSize: "8px", color: "#94a3b8", transform: "translateX(-50%)", whiteSpace: "nowrap",
+          }}>NOW ${price.toFixed(2)}</div>
+        </div>
+
+        {(vr.models || []).map((m, i) => {
+          const mColor = m.upside_pct >= 0 ? "#22c55e" : "#ef4444";
+          const left   = Math.min(toPct(price), toPct(m.fair_value));
+          const width  = Math.abs(toPct(m.fair_value) - toPct(price));
+          return (
+            <div key={i} style={{ marginBottom: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                <span style={{ fontSize: "9px", color: "#7a99bb" }}>
+                  {m.name} <span style={{ color: "#4d6b8a" }}>(wt {Math.round(m.weight * 100)}%)</span>
+                </span>
+                <span style={{ fontSize: "10px", fontWeight: "700", color: mColor, fontFamily: "JetBrains Mono, monospace" }}>
+                  ${m.fair_value} <span style={{ fontSize: "9px" }}>({m.upside_pct > 0 ? "+" : ""}{m.upside_pct}%)</span>
+                </span>
+              </div>
+              <div style={{ position: "relative", height: "5px", background: "#1e293b", borderRadius: "3px" }}>
+                <div style={{
+                  position: "absolute", left: `${left}%`, width: `${Math.max(width, 1)}%`,
+                  height: "100%", background: `${mColor}50`, borderRadius: "3px",
+                }} />
+                <div style={{
+                  position: "absolute", left: `${toPct(m.fair_value)}%`,
+                  width: "8px", height: "8px", top: "-1.5px",
+                  background: mColor, borderRadius: "50%", transform: "translateX(-50%)",
+                }} />
+              </div>
+              <div style={{ fontSize: "8px", color: "#4d6b8a", marginTop: "3px", fontStyle: "italic" }}>
+                {m.key_assumption}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ResultPanel({ data, ticker, onReset, onDownload, downloading }) {
   const fin             = data.financial_data   || {};
   const risk_assessment = data.risk_assessment  || "";
   const investment_memo = data.investment_memo  || "";
+  const vr              = data.valuation_result || null;
   const recommendation  = data.recommendation   || fin.analyst_recommendation || "N/A";
 
-  const riskScore = (() => {
-    const m = risk_assessment.match(/RISK SCORE:\s*(\d+)/i);
-    return m ? parseInt(m[1]) : null;
-  })();
+  const riskScore = (() => { const m = risk_assessment.match(/RISK SCORE:\s*(\d+)/i); return m ? parseInt(m[1]) : null; })();
+  const riskLevel = (() => { const m = risk_assessment.match(/OVERALL RISK LEVEL:\s*(\w+)/i); return m ? m[1].trim() : null; })();
 
-  const riskLevel = (() => {
-    const m = risk_assessment.match(/OVERALL RISK LEVEL:\s*(\w+)/i);
-    return m ? m[1].trim() : null;
-  })();
-
-  const sections = investment_memo
-    .split(/\n## /)
-    .map((s, i) => {
-      if (i === 0) return null;
-      const lines = s.split("\n");
-      return { title: lines[0].replace(/^#+\s*/, ""), body: lines.slice(1).join("\n").trim() };
-    })
-    .filter(Boolean);
+  const sections = investment_memo.split(/\n## /).map((s, i) => {
+    if (i === 0) return null;
+    const lines = s.split("\n");
+    return { title: lines[0].replace(/^#+\s*/, ""), body: lines.slice(1).join("\n").trim() };
+  }).filter(Boolean);
 
   const riskColor = !riskScore ? "#94a3b8"
-    : riskScore <= 3 ? "#22c55e"
-    : riskScore <= 6 ? "#f59e0b"
+    : riskScore <= 3 ? "#22c55e" : riskScore <= 6 ? "#f59e0b"
     : riskScore <= 8 ? "#ef4444" : "#9333ea";
 
   const recUpper = String(recommendation).toUpperCase();
-  const recColor = recUpper.includes("BUY") ? "#22c55e"
-    : recUpper === "HOLD" ? "#f59e0b" : "#ef4444";
+  const recColor = recUpper.includes("BUY") ? "#22c55e" : recUpper === "HOLD" ? "#f59e0b" : "#ef4444";
 
   const fmtPrice = (v) => {
     if (!v || v === "N/A") return "—";
@@ -451,9 +450,7 @@ function ResultPanel({ data, ticker, onReset, onDownload, downloading }) {
         <div className="result-ticker-block">
           <span className="result-ticker">{ticker}</span>
           <span className="result-company">{data.company_name}</span>
-          <span className="result-date">
-            {new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-          </span>
+          <span className="result-date">{new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
         </div>
         <div className="result-actions">
           <button className="action-btn secondary" onClick={onReset}>← NEW ANALYSIS</button>
@@ -501,9 +498,7 @@ function ResultPanel({ data, ticker, onReset, onDownload, downloading }) {
             ].map(([label, val]) => (
               <div key={label} className="fin-row">
                 <span className="fin-label">{label}</span>
-                <span className={`fin-val ${!val || val === "N/A" ? "na" : ""}`}>
-                  {val && val !== "N/A" ? val : "—"}
-                </span>
+                <span className={`fin-val ${!val || val === "N/A" ? "na" : ""}`}>{val && val !== "N/A" ? val : "—"}</span>
               </div>
             ))}
           </div>
@@ -517,18 +512,18 @@ function ResultPanel({ data, ticker, onReset, onDownload, downloading }) {
               <div className="risk-text">
                 <div className="risk-level" style={{ color: riskColor }}>{riskLevel || "—"}</div>
                 <div className="risk-factors">
-                  {risk_assessment.split("\n")
-                    .filter(l => /^\d+\./.test(l.trim()))
-                    .map((l, i) => (
-                      <div key={i} className="risk-factor-line">
-                        <span className="risk-dot" style={{ background: riskColor }} />
-                        <span>{l.replace(/^\d+\.\s*\*{0,2}/, "").replace(/\*{0,2}$/, "")}</span>
-                      </div>
-                    ))}
+                  {risk_assessment.split("\n").filter(l => /^\d+\./.test(l.trim())).map((l, i) => (
+                    <div key={i} className="risk-factor-line">
+                      <span className="risk-dot" style={{ background: riskColor }} />
+                      <span>{l.replace(/^\d+\.\s*\*{0,2}/, "").replace(/\*{0,2}$/, "")}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
+
+          <ValuationPanel vr={vr} />
 
           <div className="memo-sections">
             <div className="section-head">INVESTMENT MEMO</div>
@@ -547,9 +542,7 @@ function ResultPanel({ data, ticker, onReset, onDownload, downloading }) {
                 </div>
               </div>
             )) : (
-              <div className="memo-para" style={{ color: "var(--text-dim)" }}>
-                {investment_memo || "No memo available."}
-              </div>
+              <div className="memo-para" style={{ color: "var(--text-dim)" }}>{investment_memo || "No memo available."}</div>
             )}
           </div>
         </div>
@@ -559,56 +552,42 @@ function ResultPanel({ data, ticker, onReset, onDownload, downloading }) {
 }
 
 export default function App() {
-  const [mode,        setMode]        = useState("idle");
-  const [ticker,      setTicker]      = useState("");
-  const [stage,       setStage]       = useState(null);
-  const [result,      setResult]      = useState(null);
-  const [error,       setError]       = useState(null);
-  const [elapsed,     setElapsed]     = useState(0);
+  const [mode, setMode]               = useState("idle");
+  const [ticker, setTicker]           = useState("");
+  const [stage, setStage]             = useState(null);
+  const [result, setResult]           = useState(null);
+  const [error, setError]             = useState(null);
+  const [elapsed, setElapsed]         = useState(0);
   const [downloading, setDownloading] = useState(false);
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (mode === "loading") {
-      timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-    } else {
-      clearInterval(timerRef.current);
-    }
+    if (mode === "loading") { timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000); }
+    else { clearInterval(timerRef.current); }
     return () => clearInterval(timerRef.current);
   }, [mode]);
 
   const simulate = (stages, idx, resolve) => {
     if (idx >= stages.length) return resolve();
     setStage(stages[idx].id);
-    setTimeout(() => simulate(stages, idx + 1, resolve), 2200 + Math.random() * 2800);
+    setTimeout(() => simulate(stages, idx + 1, resolve), 2000 + Math.random() * 2500);
   };
 
   const handleSubmit = async (t) => {
-    setTicker(t);
-    setMode("loading");
-    setElapsed(0);
-    setError(null);
-    setResult(null);
-    setStage(STAGES[0].id);
+    setTicker(t); setMode("loading"); setElapsed(0);
+    setError(null); setResult(null); setStage(STAGES[0].id);
     const stagePromise = new Promise(r => simulate(STAGES, 0, r));
     try {
       const res = await fetch("/research", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ ticker: t }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker: t }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `Server error ${res.status}`);
-      }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || `Server error ${res.status}`); }
       const data = await res.json();
       await stagePromise;
-      setResult(data);
-      setMode("done");
+      setResult(data); setMode("done");
     } catch (e) {
-      await stagePromise;
-      setError(e.message);
-      setMode("error");
+      await stagePromise; setError(e.message); setMode("error");
     }
   };
 
@@ -620,26 +599,17 @@ export default function App() {
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
-      a.href = url;
-      a.download = `${ticker}_memo_${new Date().toISOString().slice(0, 10)}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert("PDF download failed: " + e.message);
-    } finally {
-      setDownloading(false);
-    }
+      a.href = url; a.download = `${ticker}_memo_${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click(); URL.revokeObjectURL(url);
+    } catch (e) { alert("PDF download failed: " + e.message); }
+    finally { setDownloading(false); }
   };
 
-  const handleReset = () => {
-    setMode("idle"); setTicker(""); setResult(null); setError(null); setStage(null);
-  };
+  const handleReset = () => { setMode("idle"); setTicker(""); setResult(null); setError(null); setStage(null); };
 
   return (
     <div className="app">
-      <div className="bg-grid" />
-      <div className="bg-glow" />
-
+      <div className="bg-grid" /><div className="bg-glow" />
       <header className="topbar">
         <div className="logo">
           <span className="logo-mark">▲</span>
@@ -647,8 +617,7 @@ export default function App() {
         </div>
         <div className="topbar-right">
           <span className="topbar-tag">AI EQUITY RESEARCH</span>
-          <div className="live-dot" />
-          <span className="live-label">LIVE</span>
+          <div className="live-dot" /><span className="live-label">LIVE</span>
         </div>
       </header>
 
@@ -656,25 +625,19 @@ export default function App() {
         {mode === "idle" && (
           <div className="hero">
             <div className="hero-eyebrow">INSTITUTIONAL-GRADE ANALYSIS</div>
-            <h1 className="hero-title">
-              AI-Powered<br />
-              <span className="hero-accent">Equity Research</span>
-            </h1>
+            <h1 className="hero-title">AI-Powered<br /><span className="hero-accent">Equity Research</span></h1>
             <p className="hero-sub">
               Multi-agent pipeline combining SEC filings, live market data,<br />
               and LLM synthesis to generate professional investment memos.
             </p>
             <TickerInput onSubmit={handleSubmit} loading={false} />
             <div className="hero-features" style={{ position: "relative", zIndex: 0 }}>
-              {["SEC 10-K Analysis", "Yahoo Finance Data", "Risk Quantification", "PDF Export"].map(f => (
-                <div key={f} className="feature-pill">
-                  <span className="feature-check">✓</span> {f}
-                </div>
+              {["SEC 10-K Analysis", "Yahoo Finance Data", "Multi-Model Valuation", "Risk Quantification", "PDF Export"].map(f => (
+                <div key={f} className="feature-pill"><span className="feature-check">✓</span> {f}</div>
               ))}
             </div>
           </div>
         )}
-
         {mode === "loading" && (
           <div className="loading-view">
             <div className="loading-ticker">{ticker}</div>
@@ -682,25 +645,15 @@ export default function App() {
             <ProgressPanel stage={stage} stages={STAGES} elapsed={elapsed} />
           </div>
         )}
-
         {mode === "done" && result && (
-          <ResultPanel
-            data={result}
-            ticker={ticker}
-            onReset={handleReset}
-            onDownload={handleDownload}
-            downloading={downloading}
-          />
+          <ResultPanel data={result} ticker={ticker} onReset={handleReset} onDownload={handleDownload} downloading={downloading} />
         )}
-
         {mode === "error" && (
           <div className="error-view">
             <div className="error-icon">⚠</div>
             <div className="error-title">Analysis Failed</div>
             <div className="error-msg">{error}</div>
-            <div className="error-hint">
-              Make sure FastAPI is running: <code>uvicorn api.main:app --reload --port 8000</code>
-            </div>
+            <div className="error-hint">Make sure FastAPI is running: <code>uvicorn api.main:app --reload --port 8000</code></div>
             <button className="action-btn secondary" onClick={handleReset}>← TRY AGAIN</button>
           </div>
         )}

@@ -9,7 +9,6 @@ load_dotenv()
 def get_financial_data(ticker: str) -> dict:
     """
     Fetch key financial metrics for a company using Yahoo Finance.
-    Returns revenue, profit margins, P/E ratio, debt, and growth metrics.
 
     Key naming convention matches what pdf_generator.py and all agents expect:
       net_margin       (not profit_margin)
@@ -19,6 +18,16 @@ def get_financial_data(ticker: str) -> dict:
       gross_profit     (fetched from financials)
       ebitda           (fetched from financials)
       ev_ebitda        (fetched from info)
+
+    Valuation agent inputs (NEW — raw floats, not formatted strings):
+      free_cash_flow        raw float in dollars
+      shares_outstanding    raw float (count)
+      beta                  float
+      book_value_per_share  float (dollars per share)
+      operating_cash_flow   raw float in dollars
+      total_revenue_raw     raw float in dollars
+      enterprise_value      raw float in dollars
+      ebitda_raw            raw float in dollars
     """
     key    = cache_key("yahoo", ticker)
     cached = cache_get(key)
@@ -31,7 +40,6 @@ def get_financial_data(ticker: str) -> dict:
 
     # ── Helper formatters ────────────────────────────────────────────────────
     def fmt_number(val):
-        """Format large raw numbers into $XB / $XM strings."""
         if isinstance(val, (int, float)) and val != 0:
             if abs(val) >= 1_000_000_000_000:
                 return f"${val / 1_000_000_000_000:.2f}T"
@@ -42,26 +50,19 @@ def get_financial_data(ticker: str) -> dict:
         return val
 
     def fmt_percent(val):
-        """Convert decimal ratios (0.47) to percentage strings (47.00%)."""
         if isinstance(val, float) and abs(val) < 10:
             return f"{val * 100:.2f}%"
         return val
 
-    def fmt_multiple(val, suffix="x"):
-        """Round a float multiple to 2dp and add suffix."""
-        if isinstance(val, float):
-            return f"{val:.2f}{suffix}"
-        return val
-
-    # ── Pull income statement for fields not in info ─────────────────────────
+    # ── Pull income statement ─────────────────────────────────────────────────
     net_income   = "N/A"
     gross_profit = "N/A"
     ebitda_val   = "N/A"
 
     try:
-        financials = stock.financials  # annual income statement
+        financials = stock.financials
         if financials is not None and not financials.empty:
-            col = financials.columns[0]  # most recent fiscal year
+            col = financials.columns[0]
 
             if "Net Income" in financials.index:
                 ni = financials.loc["Net Income", col]
@@ -73,7 +74,6 @@ def get_financial_data(ticker: str) -> dict:
                 if gp is not None:
                     gross_profit = fmt_number(float(gp))
 
-            # EBITDA = Operating Income + D&A  (or use info field)
             ebitda_raw = info.get("ebitda")
             if ebitda_raw and isinstance(ebitda_raw, (int, float)) and ebitda_raw != 0:
                 ebitda_val = fmt_number(ebitda_raw)
@@ -96,24 +96,23 @@ def get_financial_data(ticker: str) -> dict:
 
     # ── Analyst flags ─────────────────────────────────────────────────────────
     analyst_flags = []
-    pe     = info.get("trailingPE")
-    de     = info.get("debtToEquity")
-    cr     = info.get("currentRatio")
-    if pe  and isinstance(pe, float) and pe > 40:
+    pe = info.get("trailingPE")
+    de = info.get("debtToEquity")
+    cr = info.get("currentRatio")
+    if pe and isinstance(pe, float) and pe > 40:
         analyst_flags.append(f"HIGH_VALUATION: P/E above 40 ({pe:.1f}x)")
-    if de  and isinstance(de, float) and de > 150:
+    if de and isinstance(de, float) and de > 150:
         analyst_flags.append(f"HIGH_LEVERAGE: Debt/Equity above 150% ({de:.1f}%)")
-    if cr  and isinstance(cr, float) and cr < 1.0:
+    if cr and isinstance(cr, float) and cr < 1.0:
         analyst_flags.append(f"LIQUIDITY_RISK: Current ratio below 1.0 ({cr:.3f})")
 
-    # ── Build output dict — keys match pdf_generator + agents exactly ─────────
     data = {
         "ticker":       ticker.upper(),
         "company_name": info.get("longName", ticker),
         "sector":       info.get("sector",   "N/A"),
         "industry":     info.get("industry", "N/A"),
 
-        # Valuation
+        # Valuation (formatted strings for display)
         "current_price":  info.get("currentPrice",  "N/A"),
         "market_cap":     fmt_number(info.get("marketCap")),
         "pe_ratio":       info.get("trailingPE",    "N/A"),
@@ -121,17 +120,17 @@ def get_financial_data(ticker: str) -> dict:
         "ev_ebitda":      ev_ebitda,
         "price_to_book":  info.get("priceToBook",   "N/A"),
 
-        # Revenue & profit — fetched from income statement above
+        # Revenue & profit
         "revenue_ttm":   fmt_number(info.get("totalRevenue")),
-        "gross_profit":  gross_profit,       # ← was always N/A before
-        "net_income":    net_income,         # ← was always N/A before
-        "ebitda":        ebitda_val,         # ← was always N/A before
+        "gross_profit":  gross_profit,
+        "net_income":    net_income,
+        "ebitda":        ebitda_val,
 
-        # Margins — PDF expects net_margin and roe (not profit_margin / return_on_equity)
+        # Margins
         "gross_margin":     fmt_percent(info.get("grossMargins")),
         "operating_margin": fmt_percent(info.get("operatingMargins")),
-        "net_margin":       fmt_percent(info.get("profitMargins")),   # ← key renamed
-        "roe":              fmt_percent(info.get("returnOnEquity")),  # ← key renamed
+        "net_margin":       fmt_percent(info.get("profitMargins")),
+        "roe":              fmt_percent(info.get("returnOnEquity")),
 
         # Growth
         "revenue_growth":  fmt_percent(info.get("revenueGrowth")),
@@ -139,7 +138,7 @@ def get_financial_data(ticker: str) -> dict:
 
         # Financial health
         "total_debt":      fmt_number(info.get("totalDebt")),
-        "cash":            fmt_number(info.get("totalCash")),   # ← key renamed from total_cash
+        "cash":            fmt_number(info.get("totalCash")),
         "debt_to_equity":  info.get("debtToEquity",  "N/A"),
         "current_ratio":   info.get("currentRatio",  "N/A"),
         "return_on_assets":fmt_percent(info.get("returnOnAssets")),
@@ -148,9 +147,17 @@ def get_financial_data(ticker: str) -> dict:
         "analyst_recommendation": info.get("recommendationKey", "N/A"),
         "target_price":           info.get("targetMeanPrice",   "N/A"),
         "number_of_analysts":     info.get("numberOfAnalystOpinions", "N/A"),
+        "analyst_flags":          analyst_flags,
 
-        # Flags for risk scorer + PDF
-        "analyst_flags": analyst_flags,
+        # ── NEW: raw valuation inputs (kept as floats — valuation_agent does math) ──
+        "free_cash_flow":       info.get("freeCashflow"),       # e.g. 106312753152
+        "shares_outstanding":   info.get("sharesOutstanding"),  # e.g. 14681140000
+        "beta":                 info.get("beta"),               # e.g. 1.116
+        "book_value_per_share": info.get("bookValue"),          # e.g. 5.998
+        "operating_cash_flow":  info.get("operatingCashflow"),  # e.g. 135471996928
+        "total_revenue_raw":    info.get("totalRevenue"),       # e.g. 435617005568
+        "enterprise_value":     info.get("enterpriseValue"),    # e.g. 3100000000000
+        "ebitda_raw":           info.get("ebitda"),             # e.g. 129626997760
     }
 
     cache_set(key, data)
@@ -163,43 +170,20 @@ if __name__ == "__main__":
 
     print(f"Company:          {result['company_name']}")
     print(f"Sector:           {result['sector']}")
-    print(f"Industry:         {result['industry']}")
     print()
-    print("--- Valuation ---")
+    print("--- Formatted Display Fields ---")
     print(f"Current Price:    {result['current_price']}")
     print(f"Market Cap:       {result['market_cap']}")
     print(f"P/E Ratio:        {result['pe_ratio']}")
-    print(f"Forward P/E:      {result['forward_pe']}")
     print(f"EV/EBITDA:        {result['ev_ebitda']}")
-    print(f"Price/Book:       {result['price_to_book']}")
     print()
-    print("--- Revenue & Profit ---")
-    print(f"Revenue (TTM):    {result['revenue_ttm']}")
-    print(f"Gross Profit:     {result['gross_profit']}")
-    print(f"Net Income:       {result['net_income']}")
-    print(f"EBITDA:           {result['ebitda']}")
-    print()
-    print("--- Margins ---")
-    print(f"Gross Margin:     {result['gross_margin']}")
-    print(f"Operating Margin: {result['operating_margin']}")
-    print(f"Net Margin:       {result['net_margin']}")
-    print(f"ROE:              {result['roe']}")
-    print()
-    print("--- Growth ---")
-    print(f"Revenue Growth:   {result['revenue_growth']}")
-    print(f"Earnings Growth:  {result['earnings_growth']}")
-    print()
-    print("--- Financial Health ---")
-    print(f"Total Debt:       {result['total_debt']}")
-    print(f"Cash:             {result['cash']}")
-    print(f"Debt/Equity:      {result['debt_to_equity']}")
-    print(f"Current Ratio:    {result['current_ratio']}")
-    print()
-    print("--- Analyst Sentiment ---")
-    print(f"Recommendation:   {result['analyst_recommendation']}")
-    print(f"Target Price:     {result['target_price']}")
-    print(f"# of Analysts:    {result['number_of_analysts']}")
-    print()
-    print("--- Analyst Flags ---")
-    for f in result['analyst_flags']:
-        print(f"  ⚠️  {f}")
+    print("--- NEW: Raw Valuation Inputs ---")
+    fcf = result['free_cash_flow']
+    shr = result['shares_outstanding']
+    ocf = result['operating_cash_flow']
+    print(f"Free Cash Flow:   ${fcf:,.0f}" if fcf else "FCF:    N/A")
+    print(f"Shares Out:       {shr:,.0f}" if shr else "Shares: N/A")
+    print(f"Beta:             {result['beta']}")
+    print(f"Book Value/Share: ${result['book_value_per_share']}")
+    print(f"Op. Cash Flow:    ${ocf:,.0f}" if ocf else "OCF:    N/A")
+    print(f"Total Revenue:    ${result['total_revenue_raw']:,.0f}" if result['total_revenue_raw'] else "Rev:    N/A")

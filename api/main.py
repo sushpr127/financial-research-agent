@@ -19,10 +19,9 @@ from src.output.pdf_generator import generate_pdf
 app = FastAPI(
     title="Financial Research Agent API",
     description="AI-powered investment research pipeline",
-    version="1.0.0"
+    version="2.0.0"
 )
 
-# Allow React frontend to call this API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173"],
@@ -39,16 +38,17 @@ class ResearchRequest(BaseModel):
 
 
 class ResearchResponse(BaseModel):
-    ticker: str
-    company_name: str
-    investment_memo: str
-    risk_assessment: str
-    filing_date: str
-    financial_data: dict | None
-    pdf_path: str | None
-    errors: list[str]
-    status: str
-    recommendation: str
+    ticker:           str
+    company_name:     str
+    investment_memo:  str
+    risk_assessment:  str
+    filing_date:      str
+    financial_data:   dict | None
+    valuation_result: dict | None      # ← NEW: multi-model valuation output
+    pdf_path:         str | None
+    errors:           list[str]
+    status:           str
+    recommendation:   str
 
 
 def _run_pipeline(ticker: str) -> dict:
@@ -58,26 +58,27 @@ def _run_pipeline(ticker: str) -> dict:
         raise ValueError(f"Invalid ticker: {result}")
 
     company_name = result
-
     graph = build_research_graph()
+
     initial_state = {
-        "ticker": ticker.upper(),
-        "company_name": company_name,
-        "news_results": None,
-        "filing_excerpt": None,
-        "filing_date": None,
-        "financial_data": None,
-        "risk_assessment": None,
-        "investment_memo": None,
-        "errors": []
+        "ticker":           ticker.upper(),
+        "company_name":     company_name,
+        "news_results":     None,
+        "filing_excerpt":   None,
+        "filing_date":      None,
+        "financial_data":   None,
+        "risk_assessment":  None,
+        "valuation_result": None,      # ← NEW
+        "investment_memo":  None,
+        "errors":           []
     }
 
     output = graph.invoke(
         initial_state,
         config={
             "run_name": f"research_{ticker.upper()}",
-            "tags": ["financial-research", ticker.upper()],
-            "metadata": {"ticker": ticker.upper(), "version": "1.0"}
+            "tags":     ["financial-research", ticker.upper()],
+            "metadata": {"ticker": ticker.upper(), "version": "2.0"}
         }
     )
 
@@ -88,10 +89,10 @@ def _run_pipeline(ticker: str) -> dict:
 def root():
     return {
         "message": "Financial Research Agent API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "endpoints": {
-            "POST /research": "Run full research pipeline for a ticker",
-            "GET  /health":   "Health check",
+            "POST /research":     "Run full research pipeline for a ticker",
+            "GET  /health":       "Health check",
             "GET  /pdf/{ticker}": "Download PDF report"
         }
     }
@@ -108,34 +109,32 @@ async def research(request: ResearchRequest):
 
     if not ticker:
         raise HTTPException(status_code=400, detail="Ticker is required")
-
     if len(ticker) > 10:
         raise HTTPException(status_code=400, detail="Invalid ticker format")
 
     print(f"\n🚀 API: Starting research for {ticker}")
 
     try:
-        loop = asyncio.get_event_loop()
+        loop   = asyncio.get_event_loop()
         output = await loop.run_in_executor(executor, _run_pipeline, ticker)
-
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
 
-    memo         = output.get("investment_memo") or ""
-    risk         = output.get("risk_assessment") or ""
-    filing_date  = output.get("filing_date") or "Unknown"
-    financial    = output.get("financial_data") or {}
+    memo         = output.get("investment_memo")  or ""
+    risk         = output.get("risk_assessment")  or ""
+    filing_date  = output.get("filing_date")      or "Unknown"
+    financial    = output.get("financial_data")   or {}
+    valuation    = output.get("valuation_result") or None   # ← NEW
     company_name = output.get("company_name", ticker)
-    errors       = output.get("errors") or []
+    errors       = output.get("errors")           or []
 
-    # ── Extract recommendation from financial_data ────────────────────────────
     recommendation = str(
         financial.get("analyst_recommendation", "N/A")
     ).upper()
 
-    # Generate PDF
+    # ── Generate PDF ──────────────────────────────────────────────────────────
     pdf_path = None
     if memo and memo != "Memo generation failed":
         try:
@@ -165,6 +164,7 @@ async def research(request: ResearchRequest):
         risk_assessment=risk,
         filing_date=filing_date,
         financial_data=financial,
+        valuation_result=valuation,    # ← NEW
         pdf_path=pdf_path,
         errors=errors,
         status=status,

@@ -4,10 +4,9 @@ from src.agents.researcher import researcher_agent
 from src.agents.filing_parser import filing_parser_agent
 from src.agents.financial_analyst import financial_analyst_agent
 from src.agents.risk_scorer import risk_scorer_agent
+from src.agents.valuation_agent import valuation_agent
 from src.agents.writer import writer_agent
 from src.validator import validate_pipeline_state
-from langsmith import traceable
-
 
 
 def validation_node(state: ResearchState) -> dict:
@@ -26,37 +25,28 @@ def validation_node(state: ResearchState) -> dict:
     if not is_valid:
         print("   ❌ Critical: all data sources failed. Memo quality will be very low.")
 
-    return {}  # validation node doesn't modify state
+    return {}
 
 
 def parallel_research(state: ResearchState) -> dict:
     """
     Runs Researcher and FilingParser in parallel using Python threads.
     Merges both results into state.
-    This is genuine parallel execution — both hit external APIs simultaneously.
     """
     import concurrent.futures
 
     results = {}
 
-    def run_researcher():
-        return researcher_agent(state)
-
-    def run_filing_parser():
-        return filing_parser_agent(state)
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        future_researcher    = executor.submit(run_researcher)
-        future_filing_parser = executor.submit(run_filing_parser)
+        future_researcher    = executor.submit(researcher_agent,    state)
+        future_filing_parser = executor.submit(filing_parser_agent, state)
 
         researcher_result    = future_researcher.result()
         filing_parser_result = future_filing_parser.result()
 
-    # Merge both results
     results.update(researcher_result)
     results.update(filing_parser_result)
 
-    # Merge errors from both
     errors = []
     if researcher_result.get("errors"):
         errors.extend(researcher_result["errors"])
@@ -68,32 +58,65 @@ def parallel_research(state: ResearchState) -> dict:
     return results
 
 
+def parallel_risk_and_valuation(state: ResearchState) -> dict:
+    """
+    Runs risk_scorer and valuation_agent in parallel — both only read financial_data.
+    Saves ~10-15 seconds on every run.
+    """
+    import concurrent.futures
+
+    results = {}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        future_risk      = executor.submit(risk_scorer_agent, state)
+        future_valuation = executor.submit(valuation_agent,   state)
+
+        risk_result      = future_risk.result()
+        valuation_result = future_valuation.result()
+
+    results.update(risk_result)
+    results.update(valuation_result)
+
+    errors = []
+    if risk_result.get("errors"):
+        errors.extend(risk_result["errors"])
+    if errors:
+        results["errors"] = (state.get("errors") or []) + errors
+
+    return results
+
+
 def build_research_graph():
     """
     Build the multi-agent research graph.
 
     Flow:
-    [parallel_research] ──> [financial_analyst] ──> [validation] ──> [risk_scorer] ──> [writer] ──> END
-
-    parallel_research runs Researcher + FilingParser simultaneously.
-    validation checks data quality before expensive LLM calls.
+    [parallel_research]
+         ↓
+    [financial_analyst]
+         ↓
+    [validation]
+         ↓
+    [parallel_risk_and_valuation]   ← risk + valuation run simultaneously
+         ↓
+    [writer]
+         ↓
+    END
     """
     graph = StateGraph(ResearchState)
 
-    # Add nodes
-    graph.add_node("parallel_research",  parallel_research)
-    graph.add_node("financial_analyst",  financial_analyst_agent)
-    graph.add_node("validation",         validation_node)
-    graph.add_node("risk_scorer",        risk_scorer_agent)
-    graph.add_node("writer",             writer_agent)
+    graph.add_node("parallel_research",          parallel_research)
+    graph.add_node("financial_analyst",          financial_analyst_agent)
+    graph.add_node("validation",                 validation_node)
+    graph.add_node("parallel_risk_and_valuation", parallel_risk_and_valuation)
+    graph.add_node("writer",                     writer_agent)
 
-    # Wire the graph
     graph.set_entry_point("parallel_research")
-    graph.add_edge("parallel_research", "financial_analyst")
-    graph.add_edge("financial_analyst", "validation")
-    graph.add_edge("validation",        "risk_scorer")
-    graph.add_edge("risk_scorer",       "writer")
-    graph.add_edge("writer",            END)
+    graph.add_edge("parallel_research",           "financial_analyst")
+    graph.add_edge("financial_analyst",           "validation")
+    graph.add_edge("validation",                  "parallel_risk_and_valuation")
+    graph.add_edge("parallel_risk_and_valuation", "writer")
+    graph.add_edge("writer",                      END)
 
     return graph.compile()
 
@@ -105,7 +128,6 @@ if __name__ == "__main__":
 
     ticker_input = "AAPL"
 
-    # Validate before running
     print(f"Validating ticker: {ticker_input}...")
     is_valid, result = validate_ticker(ticker_input)
 
@@ -126,6 +148,7 @@ if __name__ == "__main__":
         "filing_date":      None,
         "financial_data":   None,
         "risk_assessment":  None,
+        "valuation_result": None,
         "investment_memo":  None,
         "errors":           []
     }
@@ -140,12 +163,25 @@ if __name__ == "__main__":
             "run_name": f"research_{ticker_input.upper()}",
             "tags": ["financial-research", ticker_input.upper()],
             "metadata": {
-                "ticker": ticker_input.upper(),
+                "ticker":  ticker_input.upper(),
                 "company": company_name,
-                "version": "1.0"
+                "version": "1.1"
             }
         }
     )
+
+    print("\n" + "=" * 50)
+    print("VALUATION RESULT")
+    print("=" * 50)
+    vr = result.get("valuation_result")
+    if vr:
+        print(f"Model type:   {vr['model_type']}")
+        print(f"Fair value:   ${vr['weighted_fair_value']:.2f}")
+        print(f"Upside:       {vr['upside_pct']:+.1f}%")
+        print(f"Range:        ${vr['valuation_range'][0]} – ${vr['valuation_range'][1]}")
+        print(f"Verdict:      {vr['verdict']}")
+    else:
+        print("No valuation result produced.")
 
     print("\n" + "=" * 50)
     print("FINAL INVESTMENT MEMO")

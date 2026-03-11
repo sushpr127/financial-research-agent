@@ -247,3 +247,190 @@ body { font-family: var(--font-mono); background: var(--bg); color: var(--text);
 .error-msg { font-size: 12px; color: var(--text-muted); }
 .error-hint { font-size: 11px; color: var(--text-dim); border: 1px solid var(--border); padding: 8px 16px; border-radius: 4px; }
 .error-hint code { color: var(--accent); font-family: var(--font-mono); }
+
+/* ── PASTE THIS AT THE BOTTOM OF index.css ────────────────────────────────── */
+
+/* Valuation block — sits full-width above the two-column grid */
+.valuation-block {
+  background:    #080f1c;
+  border:        1px solid #1a2d4a;
+  border-radius: 8px;
+  padding:       20px 24px;
+  margin-bottom: 20px;
+}
+
+/* Summary row — 4 cards in a row */
+.val-summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.val-summary-card {
+  background:    #0d1626;
+  border:        1px solid #1a2d4a;
+  border-radius: 6px;
+  padding:       12px 14px;
+  text-align:    center;
+}
+
+.val-summary-label {
+  font-size:     8px;
+  letter-spacing:0.2em;
+  color:         #4d6b8a;
+  margin-bottom: 6px;
+  font-family:   'JetBrains Mono', monospace;
+}
+
+.val-summary-value {
+  font-size:   18px;
+  font-weight: 700;
+  color:       white;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Football field chart */
+.val-chart {
+  margin-bottom: 16px;
+}
+
+.val-chart-title {
+  font-size:     8px;
+  letter-spacing:0.2em;
+  color:         #4d6b8a;
+  margin-bottom: 12px;
+  font-family:   'JetBrains Mono', monospace;
+}
+
+.val-bar-row {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  margin-bottom: 8px;
+}
+
+.val-bar-label {
+  width:       110px;
+  font-size:   10px;
+  font-weight: 600;
+  color:       #7a99bb;
+  font-family: 'JetBrains Mono', monospace;
+  flex-shrink: 0;
+}
+
+.val-bar-track {
+  flex:        1;
+  height:      20px;
+  background:  #0d1626;
+  border:      1px solid #1a2d4a;
+  border-radius: 3px;
+  position:    relative;
+  overflow:    visible;
+}
+
+.val-bar-fill {
+  position:      absolute;
+  top:           2px;
+  height:        14px;
+  border-radius: 2px;
+}
+
+.val-bar-dot {
+  position:     absolute;
+  top:          50%;
+  transform:    translate(-50%, -50%);
+  width:        10px;
+  height:       10px;
+  border-radius:50%;
+  background:   white;
+  border:       2px solid #3b82f6;
+  z-index:      2;
+}
+
+.val-price-line {
+  position:  absolute;
+  top:       -4px;
+  height:    26px;
+  width:     2px;
+  background:#94a3b8;
+  transform: translateX(-50%);
+  z-index:   3;
+}
+
+.val-bar-value {
+  width:       70px;
+  font-size:   11px;
+  font-weight: 700;
+  color:       white;
+  font-family: 'JetBrains Mono', monospace;
+  text-align:  right;
+  flex-shrink: 0;
+}
+
+.val-bar-weight {
+  width:       36px;
+  font-size:   9px;
+  color:       #4d6b8a;
+  font-family: 'JetBrains Mono', monospace;
+  text-align:  right;
+  flex-shrink: 0;
+}
+
+/* Key assumptions */
+.val-assumptions {
+  border-top:    1px solid #1a2d4a;
+  padding-top:   12px;
+  margin-bottom: 12px;
+}
+
+.val-assumption-row {
+  display:     flex;
+  gap:         12px;
+  margin-bottom: 5px;
+  align-items: baseline;
+}
+
+.val-assumption-model {
+  font-size:   9px;
+  font-weight: 700;
+  color:       #3b82f6;
+  font-family: 'JetBrains Mono', monospace;
+  min-width:   110px;
+  flex-shrink: 0;
+}
+
+.val-assumption-text {
+  font-size:   10px;
+  color:       #4d6b8a;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Margin of safety row */
+.val-mos {
+  display:     flex;
+  align-items: center;
+  gap:         12px;
+  padding-top: 10px;
+  border-top:  1px solid #1a2d4a;
+}
+
+.val-mos-label {
+  font-size:     8px;
+  letter-spacing:0.2em;
+  color:         #4d6b8a;
+  font-family:   'JetBrains Mono', monospace;
+}
+
+.val-mos-value {
+  font-size:   14px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.val-mos-desc {
+  font-size:  10px;
+  color:      #4d6b8a;
+  font-style: italic;
+  font-family:'JetBrains Mono', monospace;
+}
