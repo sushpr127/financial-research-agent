@@ -13,18 +13,17 @@ def risk_scorer_agent(state: ResearchState) -> dict:
     Writes: risk_assessment
     """
     print(f"⚠️  RiskScorer: analyzing risks for {state['ticker']}...")
-    
+
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash",
         google_api_key=os.getenv("GEMINI_API_KEY"),
         temperature=0.2
     )
-    
-    # Build context from previous agents
+
     news_summary = ""
     for item in (state.get("news_results") or [])[:3]:
         news_summary += f"- {item['title']}\n"
-    
+
     financial_flags = ""
     fin_data = state.get("financial_data") or {}
     flags = fin_data.get("analyst_flags", [])
@@ -32,25 +31,36 @@ def risk_scorer_agent(state: ResearchState) -> dict:
         financial_flags = "\n".join(flags)
     else:
         financial_flags = "No major flags detected"
-    
-    filing_snippet = (state.get("filing_excerpt") or "")[:500]
-    
-    prompt = f"""You are a risk analyst. Based on the following data about {state['company_name']} ({state['ticker']}), 
-provide a concise risk assessment with:
-1. Overall Risk Level: LOW / MEDIUM / HIGH
-2. Top 3 risk factors (one sentence each)
-3. One key mitigating factor
 
-RECENT NEWS:
-{news_summary}
+    filing_snippet = (state.get("filing_excerpt") or "")[:1500]
 
-FINANCIAL FLAGS:
+    prompt = f"""You are a senior risk analyst at a top-tier investment bank.
+Analyze {state['company_name']} ({state['ticker']}) using the data below.
+
+FINANCIAL FLAGS FROM QUANTITATIVE ANALYSIS:
 {financial_flags}
 
-10-K EXCERPT:
+RECENT NEWS HEADLINES:
+{news_summary}
+
+OFFICIAL 10-K RISK FACTORS & MD&A (from SEC filing dated {state.get('filing_date', 'N/A')}):
 {filing_snippet}
 
-Keep your response under 200 words. Be specific and factual."""
+Provide a structured risk assessment with EXACTLY this format:
+
+OVERALL RISK LEVEL: [LOW / MEDIUM / HIGH]
+
+TOP RISKS:
+1. [Risk name]: [One precise sentence with specific data if available]
+2. [Risk name]: [One precise sentence with specific data if available]
+3. [Risk name]: [One precise sentence with specific data if available]
+
+KEY MITIGATING FACTOR:
+[One sentence on the strongest reason this company can handle these risks]
+
+RISK SCORE: [X/10]
+
+Be specific. Reference actual numbers from the data. Do not generalize."""
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
