@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── Models ──────────────────────────────────────────
-LLM_PRO   = "gemini-2.0-pro"    # used for reasoning-heavy agents
+LLM_PRO   = "gemini-2.0-flash"    # used for reasoning-heavy agents
 LLM_FLASH = "gemini-2.0-flash"  # used for cheaper/faster tasks
 
 # ── API Keys ─────────────────────────────────────────

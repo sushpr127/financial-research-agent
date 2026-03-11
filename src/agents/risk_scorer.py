@@ -3,6 +3,7 @@ from langchain_core.messages import HumanMessage
 from src.graph.state import ResearchState
 from dotenv import load_dotenv
 import os
+from src.config import LLM_PRO
 
 load_dotenv()
 
@@ -15,10 +16,10 @@ def risk_scorer_agent(state: ResearchState) -> dict:
     print(f"⚠️  RiskScorer: analyzing risks for {state['ticker']}...")
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
+        model=LLM_PRO,
         google_api_key=os.getenv("GEMINI_API_KEY"),
         temperature=0.2
-    )
+    ).with_config({"run_name": "RiskScorer_LLM"})
 
     news_summary = ""
     for item in (state.get("news_results") or [])[:3]:

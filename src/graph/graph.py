@@ -6,6 +6,8 @@ from src.agents.financial_analyst import financial_analyst_agent
 from src.agents.risk_scorer import risk_scorer_agent
 from src.agents.writer import writer_agent
 from src.validator import validate_pipeline_state
+from langsmith import traceable
+
 
 
 def validation_node(state: ResearchState) -> dict:
@@ -132,7 +134,18 @@ if __name__ == "__main__":
     print(f"Running research pipeline for {ticker_input}")
     print("=" * 50 + "\n")
 
-    result = app.invoke(initial_state)
+    result = app.invoke(
+        initial_state,
+        config={
+            "run_name": f"research_{ticker_input.upper()}",
+            "tags": ["financial-research", ticker_input.upper()],
+            "metadata": {
+                "ticker": ticker_input.upper(),
+                "company": company_name,
+                "version": "1.0"
+            }
+        }
+    )
 
     print("\n" + "=" * 50)
     print("FINAL INVESTMENT MEMO")
