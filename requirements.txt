@@ -1,30 +1,37 @@
-# LangGraph + LangChain
+# ── LangGraph + LangChain ─────────────────────────────────────────────────────
 langgraph>=0.2.0
 langchain>=0.3.0
-langchain-openai>=0.2.0
+langchain-google-genai>=2.0.0
 langchain-community>=0.3.0
 
-# Tools
+# ── Data tools ────────────────────────────────────────────────────────────────
 tavily-python>=0.3.0
 yfinance>=0.2.40
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 
-# API
+# ── API ───────────────────────────────────────────────────────────────────────
 fastapi>=0.115.0
 uvicorn>=0.30.0
 python-multipart>=0.0.9
 
-# Output
+# ── Output ────────────────────────────────────────────────────────────────────
 reportlab>=4.2.0
 
-# Observability
+# ── Observability ─────────────────────────────────────────────────────────────
 langsmith>=0.1.0
 
-# Evals
+# ── Evals ─────────────────────────────────────────────────────────────────────
 ragas>=0.1.0
+datasets>=2.14.0
 
-# Utilities
+# ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0
 pydantic>=2.8.0
 httpx>=0.27.0
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.27.0
+matplotlib>=3.8.0

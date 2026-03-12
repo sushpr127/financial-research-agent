@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Environment (NEVER bake keys into image)
+.env
+.env.*
+!.env.example
+
+# Cache & outputs (mounted as volumes at runtime)
+.cache/
+outputs/
+
+# Frontend build artifacts (built inside container)
+frontend/node_modules/
+frontend/dist/
+
+# Dev tools
+.git/
+.gitignore
+*.md
+.DS_Store
+
+# Tests & evals (not needed in production image)
+tests/
+evals/
