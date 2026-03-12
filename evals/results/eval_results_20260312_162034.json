@@ -1,0 +1,549 @@
+[
+  {
+    "id": "TC01",
+    "ticker": "AAPL",
+    "description": "Large-cap stable tech \u2014 should produce stable regime valuation",
+    "timestamp": "2026-03-12T16:19:00.667935",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Recent Developments",
+          "Risk Factors",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 1.0,
+        "found": [
+          "Apple",
+          "revenue",
+          "margin",
+          "WACC"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 2806,
+        "min_length": 800,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "stable",
+        "verdict": "OVERVALUED",
+        "pass": true
+      }
+    },
+    "passed": true,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nApple Inc. (AAPL) designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and related services. The company reported TTM revenue of $435.62B and net income of $112.01B, demonstrating substantial profitability. Despite strong growth metrics, our m..."
+  },
+  {
+    "id": "TC02",
+    "ticker": "MSFT",
+    "description": "Large-cap stable tech \u2014 should produce DCF + EV/EBITDA + P/E valuation",
+    "timestamp": "2026-03-12T16:19:11.829558",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 0.5,
+        "found": [
+          "Microsoft",
+          "revenue"
+        ],
+        "missing": [
+          "Azure",
+          "cloud"
+        ],
+        "pass": false
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 2825,
+        "min_length": 800,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "stable",
+        "verdict": "OVERVALUED",
+        "pass": true
+      }
+    },
+    "passed": false,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nMicrosoft Corporation (MSFT) is a global technology leader, developing and supporting a wide range of software, services, devices, and solutions. The company demonstrates robust financial performance, with TTM revenue of $305.45B and net income of $101.83B. Despite strong growt..."
+  },
+  {
+    "id": "TC03",
+    "ticker": "JPM",
+    "description": "Major bank \u2014 should use P/B + P/E (financial regime)",
+    "timestamp": "2026-03-12T16:19:22.740783",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 0.333,
+        "found": [
+          "JPMorgan"
+        ],
+        "missing": [
+          "book value",
+          "P/B"
+        ],
+        "pass": false
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 2771,
+        "min_length": 700,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 0.857,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": false,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "stable",
+        "verdict": "UNDERVALUED",
+        "pass": true
+      }
+    },
+    "passed": false,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nJPMorgan Chase & Co. (JPM) is a leading global financial services firm with $4.4 trillion in assets. The company demonstrates strong profitability with a net income of $57.05B and a net margin of 33.91%. Despite some risks, our multi-model valuation suggests that JPM is current..."
+  },
+  {
+    "id": "TC04",
+    "ticker": "XOM",
+    "description": "Energy major \u2014 should use EV/EBITDA + DCF + P/E (energy regime)",
+    "timestamp": "2026-03-12T16:19:34.614523",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 1.0,
+        "found": [
+          "Exxon",
+          "oil",
+          "energy",
+          "revenue"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 2639,
+        "min_length": 700,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "energy",
+        "verdict": "OVERVALUED",
+        "pass": true
+      }
+    },
+    "passed": true,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nExxon Mobil Corporation (XOM) is an integrated oil and gas company involved in exploration, production, refining, and marketing of energy products and petrochemicals. The company generated $323.90B in revenue and $28.84B in net income over the trailing twelve months. Despite an..."
+  },
+  {
+    "id": "TC05",
+    "ticker": "NVDA",
+    "description": "High-growth profitable \u2014 should use Revenue Multiple + DCF",
+    "timestamp": "2026-03-12T16:19:44.715068",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 0.75,
+        "found": [
+          "NVIDIA",
+          "data center",
+          "revenue"
+        ],
+        "missing": [
+          "GPU"
+        ],
+        "pass": true
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 3053,
+        "min_length": 800,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "high_growth",
+        "verdict": "OVERVALUED",
+        "pass": true
+      }
+    },
+    "passed": true,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nNVIDIA (NVDA) is a data center scale AI infrastructure company pioneering accelerated computing solutions. The company has demonstrated exceptional financial performance, with TTM revenue of $215.94B and net income of $120.07B. Despite strong analyst consensus, our valuation mo..."
+  },
+  {
+    "id": "TC06",
+    "ticker": "GOOGL",
+    "description": "Large-cap stable tech \u2014 memo should cite advertising revenue and cloud",
+    "timestamp": "2026-03-12T16:19:54.106228",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 0.75,
+        "found": [
+          "Alphabet",
+          "Google",
+          "revenue"
+        ],
+        "missing": [
+          "advertising"
+        ],
+        "pass": true
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 2876,
+        "min_length": 800,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "stable",
+        "verdict": "FAIRLY VALUED",
+        "pass": true
+      }
+    },
+    "passed": true,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nAlphabet Inc. (GOOGL) is a technology conglomerate, with Google as its largest component, operating in Google Services, Google Cloud, and Other Bets. The company demonstrates robust financial performance with TTM revenue of $402.84B and net income of $132.17B. While current val..."
+  },
+  {
+    "id": "TC07",
+    "ticker": "META",
+    "description": "High-growth social media \u2014 memo should cite advertising and AI investment",
+    "timestamp": "2026-03-12T16:20:04.256320",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 0.75,
+        "found": [
+          "Meta",
+          "revenue",
+          "margin"
+        ],
+        "missing": [
+          "advertising"
+        ],
+        "pass": true
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 2903,
+        "min_length": 800,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "stable",
+        "verdict": "OVERVALUED",
+        "pass": true
+      }
+    },
+    "passed": true,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nMeta Platforms, Inc. (META) is focused on building the future of human connection through mobile devices, PCs, VR headsets, and AI glasses. The company demonstrates strong financial performance with TTM revenue of $200.97B and a net income of $60.46B. Despite positive analyst s..."
+  },
+  {
+    "id": "TC08",
+    "ticker": "JNJ",
+    "description": "Stable healthcare \u2014 memo should cite pharmaceutical revenue and pipeline",
+    "timestamp": "2026-03-12T16:20:13.927320",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 0.75,
+        "found": [
+          "Johnson",
+          "revenue",
+          "margin"
+        ],
+        "missing": [
+          "pharmaceutical"
+        ],
+        "pass": true
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 3210,
+        "min_length": 700,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "stable",
+        "verdict": "FAIRLY VALUED",
+        "pass": true
+      }
+    },
+    "passed": true,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nJohnson & Johnson (JNJ) is a global healthcare company engaged in the research, development, manufacture, and sale of a broad range of products in the healthcare field. The company demonstrates strong profitability with a net income of $26.80B and a net margin of 28.46%. Despit..."
+  },
+  {
+    "id": "TC09",
+    "ticker": "AMZN",
+    "description": "Large-cap tech/retail \u2014 memo should cite AWS and e-commerce revenue",
+    "timestamp": "2026-03-12T16:20:24.854789",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 1.0,
+        "found": [
+          "Amazon",
+          "AWS",
+          "revenue",
+          "cloud"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 2918,
+        "min_length": 800,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "stable",
+        "verdict": "OVERVALUED",
+        "pass": true
+      }
+    },
+    "passed": true,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nAmazon.com, Inc. (AMZN) is a global leader in e-commerce, cloud computing, and digital advertising. The company has demonstrated strong revenue growth of 13.60% YoY, reaching $716.92B in TTM revenue, but earnings growth lags at 5.00%. Despite a STRONG_BUY analyst consensus, our..."
+  },
+  {
+    "id": "TC10",
+    "ticker": "BRK-B",
+    "description": "Conglomerate / financial \u2014 gross profit N/A is expected, should not crash",
+    "timestamp": "2026-03-12T16:20:34.991541",
+    "scores": {},
+    "passed": false,
+    "error": "Invalid ticker: BRK-B"
+  }
+]

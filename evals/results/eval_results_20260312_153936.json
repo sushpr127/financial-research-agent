@@ -1,0 +1,63 @@
+[
+  {
+    "id": "TC01",
+    "ticker": "AAPL",
+    "description": "Large-cap stable tech \u2014 should produce stable regime valuation",
+    "timestamp": "2026-03-12T15:39:23.929831",
+    "scores": {
+      "structural_completeness": {
+        "score": 1.0,
+        "found": [
+          "Executive Summary",
+          "Financial Highlights",
+          "Recent Developments",
+          "Risk Factors",
+          "Valuation Analysis",
+          "Investment Recommendation"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "factual_grounding": {
+        "score": 1.0,
+        "found": [
+          "Apple",
+          "revenue",
+          "margin",
+          "WACC"
+        ],
+        "missing": [],
+        "pass": true
+      },
+      "hallucination_guard": {
+        "score": 1.0,
+        "violations": [],
+        "pass": true
+      },
+      "length_adequacy": {
+        "score": 1.0,
+        "length": 2972,
+        "min_length": 800,
+        "pass": true
+      },
+      "valuation_correctness": {
+        "score": 1.0,
+        "checks": {
+          "has_regime": true,
+          "correct_regime": true,
+          "has_verdict": true,
+          "has_weighted_value": true,
+          "has_models": true,
+          "has_range": true,
+          "math_correct": true
+        },
+        "regime": "stable",
+        "verdict": "OVERVALUED",
+        "pass": true
+      }
+    },
+    "passed": true,
+    "error": null,
+    "memo_preview": "## Executive Summary\n\nApple Inc. (AAPL) designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories, along with related services. The company delivered $435.62B in revenue and $112.01B in net income. Despite strong growth, our multi-model valuation suggest..."
+  }
+]

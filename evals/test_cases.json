@@ -1,0 +1,248 @@
+[
+  {
+    "id": "TC01",
+    "ticker": "AAPL",
+    "company_name": "Apple Inc.",
+    "description": "Large-cap stable tech — should produce stable regime valuation",
+    "expected_regime": "stable",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Recent Developments",
+      "Risk Factors",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "Apple",
+      "revenue",
+      "margin",
+      "WACC"
+    ],
+    "should_not_contain": [
+      "I cannot",
+      "I don't have",
+      "no data available",
+      "Memo generation failed"
+    ],
+    "min_memo_length": 800,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC02",
+    "ticker": "MSFT",
+    "company_name": "Microsoft Corporation",
+    "description": "Large-cap stable tech — should produce DCF + EV/EBITDA + P/E valuation",
+    "expected_regime": "stable",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "Microsoft",
+      "Azure",
+      "cloud",
+      "revenue"
+    ],
+    "should_not_contain": [
+      "Memo generation failed",
+      "I cannot provide"
+    ],
+    "min_memo_length": 800,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC03",
+    "ticker": "JPM",
+    "company_name": "JPMorgan Chase & Co.",
+    "description": "Major bank — should use P/B + P/E (financial regime)",
+    "expected_regime": "financial",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "JPMorgan",
+      "book value",
+      "P/B"
+    ],
+    "should_not_contain": [
+      "Memo generation failed"
+    ],
+    "min_memo_length": 700,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC04",
+    "ticker": "XOM",
+    "company_name": "Exxon Mobil Corporation",
+    "description": "Energy major — should use EV/EBITDA + DCF + P/E (energy regime)",
+    "expected_regime": "energy",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "Exxon",
+      "oil",
+      "energy",
+      "revenue"
+    ],
+    "should_not_contain": [
+      "Memo generation failed"
+    ],
+    "min_memo_length": 700,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC05",
+    "ticker": "NVDA",
+    "company_name": "NVIDIA Corporation",
+    "description": "High-growth profitable — should use Revenue Multiple + DCF",
+    "expected_regime": "high_growth",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "NVIDIA",
+      "GPU",
+      "data center",
+      "revenue"
+    ],
+    "should_not_contain": [
+      "Memo generation failed"
+    ],
+    "min_memo_length": 800,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC06",
+    "ticker": "GOOGL",
+    "company_name": "Alphabet Inc.",
+    "description": "Large-cap stable tech — memo should cite advertising revenue and cloud",
+    "expected_regime": "stable",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "Alphabet",
+      "Google",
+      "advertising",
+      "revenue"
+    ],
+    "should_not_contain": [
+      "Memo generation failed",
+      "I cannot"
+    ],
+    "min_memo_length": 800,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC07",
+    "ticker": "META",
+    "company_name": "Meta Platforms Inc.",
+    "description": "High-growth social media — memo should cite advertising and AI investment",
+    "expected_regime": "stable",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "Meta",
+      "advertising",
+      "revenue",
+      "margin"
+    ],
+    "should_not_contain": [
+      "Memo generation failed"
+    ],
+    "min_memo_length": 800,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC08",
+    "ticker": "JNJ",
+    "company_name": "Johnson & Johnson",
+    "description": "Stable healthcare — memo should cite pharmaceutical revenue and pipeline",
+    "expected_regime": "stable",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "Johnson",
+      "pharmaceutical",
+      "revenue",
+      "margin"
+    ],
+    "should_not_contain": [
+      "Memo generation failed"
+    ],
+    "min_memo_length": 700,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC09",
+    "ticker": "AMZN",
+    "company_name": "Amazon.com Inc.",
+    "description": "Large-cap tech/retail — memo should cite AWS and e-commerce revenue",
+    "expected_regime": "stable",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "Amazon",
+      "AWS",
+      "revenue",
+      "cloud"
+    ],
+    "should_not_contain": [
+      "Memo generation failed"
+    ],
+    "min_memo_length": 800,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  },
+  {
+    "id": "TC10",
+    "ticker": "BRK-B",
+    "company_name": "Berkshire Hathaway Inc.",
+    "description": "Conglomerate / financial — gross profit N/A is expected, should not crash",
+    "expected_regime": "financial",
+    "expected_sections": [
+      "Executive Summary",
+      "Financial Highlights",
+      "Valuation Analysis",
+      "Investment Recommendation"
+    ],
+    "expected_facts": [
+      "Berkshire",
+      "revenue",
+      "investment"
+    ],
+    "should_not_contain": [
+      "Memo generation failed",
+      "error"
+    ],
+    "min_memo_length": 600,
+    "expected_verdict_options": ["UNDERVALUED", "FAIRLY VALUED", "OVERVALUED"]
+  }
+]
