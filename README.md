@@ -10,7 +10,7 @@
 
 | Financial Snapshot + Investment Memo | Risk Gauge + Valuation Football Field |
 |---|---|
-| ![Memo](docs/screenshot_memo.png) | ![Valuation](docs/screenshot_valuation.png) |
+| ![Memo](docs/memo.png) | ![Valuation](docs/valuation.png) |
 
 ---
 
