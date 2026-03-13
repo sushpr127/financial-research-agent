@@ -220,15 +220,16 @@ python evals/ragas_eval.py --ticker AAPL --no-ragas
 python evals/ragas_eval.py --no-ragas
 ```
 
-**Results across 10 companies (AAPL, MSFT, JPM, XOM, NVDA, GOOGL, META, JNJ, AMZN, GS):**
+**Results across 10 companies (AAPL, MSFT, JPM, XOM, NVDA, GOOGL, META, JNJ, AMZN, BRK-B):**
 
 | Metric | Score |
 |---|---|
 | Structural completeness | 100% |
-| Factual grounding | 93% |
+| Factual grounding | 76% |
 | Hallucination guard | 100% |
 | Length adequacy | 100% |
 | Valuation correctness | 98% |
+| Overall pass rate | 8/10 (80%) |
 
 ---
 
