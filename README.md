@@ -261,7 +261,7 @@ LLM outputs are non-deterministic. Without a scored eval suite, there's no way t
 ## Author
 
 **Sushanth Prabhu** — AI/ML Engineer  
-[GitHub](https://github.com/sushpr127) · [LinkedIn](https://linkedin.com/in/sushanth-prabhu)
+[GitHub](https://github.com/sushpr127) · [LinkedIn](https://www.linkedin.com/in/sushanthpr/)
 
 ---
 
